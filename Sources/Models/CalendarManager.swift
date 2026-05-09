@@ -38,9 +38,12 @@ class CalendarManager: ObservableObject {
     var useMockData = false  // Set to true for screenshots
     
     init() {
-        // Check if we should use mock data (for screenshots)
+        #if DEBUG
         useMockData = UserDefaults.app.bool(forKey: "useMockCalendarData")
-        
+        #else
+        useMockData = false
+        #endif
+
         if useMockData {
             hasAccess = true
             loadMockEvents()

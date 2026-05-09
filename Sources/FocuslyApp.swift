@@ -17,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let presetManager = PresetManager()
     let sessionJournal = SessionJournal()
     let breakActivityManager = BreakActivityManager()
+    let focusMonitor = FocusMonitor()
     var eventMonitor: Any?
     private var eventMonitorGlobal: Any?
     private var isPerformingPopoverAction = false  // Prevent rapid open/close race conditions
@@ -205,6 +206,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateStatusBarIcon()
             }
         }.store(in: &cancellables)
+
+        timerManager.$isRunning
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] running in
+                guard let self = self else { return }
+                if running && !self.timerManager.isBreakTime {
+                    self.focusMonitor.start()
+                } else {
+                    self.focusMonitor.stop()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     private var cancellables = Set<AnyCancellable>()
