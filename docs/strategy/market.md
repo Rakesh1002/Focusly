@@ -92,3 +92,6 @@ A signup is qualified only if the user:
 - indicates willingness to try or pay if the product works.
 
 Raw email count is not enough.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

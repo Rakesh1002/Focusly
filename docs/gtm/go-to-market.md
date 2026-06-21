@@ -166,3 +166,6 @@ Do not execute these until validation passes:
 **Iterate:** Run another validation cycle if interviews show real pain but positioning or trust is weak.
 
 **No-Go:** Stop the ADHD-Mac pivot if users do not commit, reject monitoring, or see competitors as good enough.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

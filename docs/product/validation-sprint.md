@@ -190,3 +190,6 @@ Still deferred:
 - SEO content engine,
 - creator affiliate program,
 - complex subscriptions.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

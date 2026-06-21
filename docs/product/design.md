@@ -113,3 +113,6 @@ Avoid:
 - "coach replacement",
 - "surveillance",
 - "always-on copilot" unless interviews show that language resonates.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

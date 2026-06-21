@@ -363,3 +363,6 @@ The honest read: this is a category where the structural bet for a solo founder 
 - [Best Pomodoro Apps for Mac 2026 (Chronoid)](https://www.chronoid.app/blog/best-pomodoro-app-mac/)
 - [TomatoBar OSS pomodoro on GitHub](https://github.com/ivoronin/TomatoBar)
 - [Rize time tracking blog 2026](https://rize.io/blog/time-tracking-apps-for-mac)
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

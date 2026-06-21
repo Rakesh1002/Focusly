@@ -76,3 +76,6 @@ For each interview, capture:
 - competitor they would choose instead.
 
 The sprint passes only if task anchoring plus drift recovery is a top-3 weekly pain for at least 70% of interviewees.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

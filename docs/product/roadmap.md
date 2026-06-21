@@ -123,3 +123,6 @@ These remain hypotheses, not roadmap commitments:
 - No B2B coach product.
 - No "100K MRR" roadmap commitments.
 - No App Store/Setapp launch sprint before product demand is validated.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21

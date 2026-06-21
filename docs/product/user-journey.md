@@ -104,3 +104,6 @@ No-Go if:
 - privacy objections dominate,
 - users prefer Focana/Focusmo/Focura/Focarium/Nudge,
 - the app code cannot be found or built and greenfield is not approved.
+
+---
+**Owner:** Rakesh Roushan · **Last reviewed:** 2026-06-21 · **Review by:** 2026-09-21
