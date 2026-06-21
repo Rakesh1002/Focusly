@@ -5,3 +5,5 @@ notion_page_id: 386e4a4b-2a11-81d1-86ea-faf7ede53b57
 rros_domain: product
 ---
 
+# user-journey
+*(file is empty in repo)*
