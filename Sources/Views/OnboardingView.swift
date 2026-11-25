@@ -32,7 +32,8 @@ struct OnboardingView: View {
                     if step == 0 { step = 1 } else { onFinish(true) }
                 }
                 .buttonStyle(OrbButtonStyle())
-                .keyboardShortcut(.defaultAction)
+                // On step 0 the task field's own Return advances; both handling it would skip the helpers step.
+                .keyboardShortcut(step == 1 ? .defaultAction : nil)
             }
         }
         .padding(28)
@@ -72,7 +73,7 @@ struct OnboardingView: View {
                     .frame(width: 16, height: 16)
                 Text(task.isEmpty ? "Your one task" : task)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(task.isEmpty ? Ink.tertiary : Ink.primary)
+                    .foregroundStyle(task.isEmpty ? Ink.secondary : Ink.primary)
                     .lineLimit(1)
                 Spacer(minLength: Spacing.s)
                 Text(settings.workDuration.clock)
@@ -85,7 +86,7 @@ struct OnboardingView: View {
             .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
             Text("Your floating timer, always in view")
                 .font(.system(size: 11))
-                .foregroundStyle(Ink.tertiary)
+                .foregroundStyle(Ink.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Spacing.s)
@@ -154,7 +155,7 @@ struct OnboardingView: View {
                     .foregroundStyle(Ink.primary)
                 Text(detail)
                     .font(.system(size: 12))
-                    .foregroundStyle(Ink.tertiary)
+                    .foregroundStyle(Ink.secondary)
             }
         }
     }

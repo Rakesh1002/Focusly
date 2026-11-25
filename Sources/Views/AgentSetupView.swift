@@ -34,7 +34,7 @@ struct AgentSetupView: View {
 
             HStack(spacing: Spacing.s) {
                 Circle()
-                    .fill(agentWatch.state == nil ? Ink.tertiary : Ink.primary)
+                    .fill(agentWatch.state == nil ? Ink.secondary : Ink.primary)
                     .frame(width: 6, height: 6)
                     .accessibilityHidden(true)
                 Text(status)
@@ -76,7 +76,7 @@ struct AgentSetupView: View {
             }
             .buttonStyle(PanelButtonStyle(height: 28))
             .frame(width: 92)
-            .accessibilityLabel("Copy \(integration.id) hook")
+            .accessibilityLabel(copied == integration.id ? "Copied" : "Copy \(integration.id) hook")
         }
         .padding(12)
     }

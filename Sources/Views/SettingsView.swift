@@ -59,7 +59,7 @@ struct SettingsView: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Ink.tertiary)
+                            .foregroundStyle(Ink.secondary)
                     }
                     .contentShape(Rectangle())
                 }

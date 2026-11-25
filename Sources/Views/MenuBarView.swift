@@ -22,6 +22,7 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 340)
+        .onDisappear { path.removeAll() }
     }
 
     private func header(_ title: String) -> some View {
@@ -42,7 +43,7 @@ struct MenuBarView: View {
             Spacer()
             Text("\u{2325}\u{2318}T starts or stops a block")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Ink.tertiary)
+                .foregroundStyle(Ink.secondary)
             Spacer()
             SquareIconButton(symbol: "gearshape.fill", label: "Settings") { path.append(.settings) }
         }
@@ -85,7 +86,7 @@ struct NowView: View {
                     Text(ringLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .tracking(1.4)
-                        .foregroundStyle(Ink.tertiary)
+                        .foregroundStyle(Ink.secondary)
                     Text((timerManager.isRunning ? timerManager.remainingTime : settings.workDuration).clock)
                         .font(.system(size: 42, weight: .light).monospacedDigit())
                         .foregroundStyle(Ink.primary)
@@ -202,7 +203,7 @@ struct NowView: View {
     @ViewBuilder private func meetingCard(now: Date) -> some View {
         if !calendarManager.hasAccess {
             ActionCard(symbol: "calendar", title: "Next meeting",
-                       value: Text("Not connected").foregroundColor(Ink.tertiary),
+                       value: Text("Not connected").foregroundColor(Ink.secondary),
                        action: ("Connect", calendarManager.connect))
         } else if let event = calendarManager.nextEvent(after: now) {
             let startsIn = event.startDate.timeIntervalSince(now)
@@ -226,7 +227,7 @@ struct NowView: View {
                        action: ("Return", agentWatch.returnToAgent))
         case nil:
             ActionCard(symbol: "sparkles", title: "Coding agent",
-                       value: Text("Idle").foregroundColor(Ink.tertiary),
+                       value: Text("Idle").foregroundColor(Ink.secondary),
                        action: ("Set up", openAgentSetup))
         }
     }
@@ -279,7 +280,7 @@ struct TaskField: View {
         HStack(spacing: Spacing.s) {
             Image(systemName: "scope")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Ink.tertiary)
+                .foregroundStyle(Ink.secondary)
             TextField("What are you working on?", text: $timerManager.task)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))

@@ -148,7 +148,7 @@ struct TimeDisplayWindow: View {
                 if timerManager.isRunning {
                     FocusRing(progress: blockProgress, lineWidth: 2.5)
                 } else {
-                    Circle().fill(dotColor).frame(width: 8, height: 8)
+                    Circle().fill(Ink.secondary).frame(width: 8, height: 8)
                 }
             }
             .opacity(hovering ? 0 : 1)
@@ -214,9 +214,6 @@ struct TimeDisplayWindow: View {
         return timerManager.isRunning ? "Focusing" : "Not focusing"
     }
 
-    private var dotColor: Color {
-        Ink.tertiary
-    }
 
     // Evaluated on every body pass; while focusing the countdown re-renders the view each second.
     private var isDrifting: Bool {

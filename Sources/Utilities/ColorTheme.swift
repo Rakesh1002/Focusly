@@ -25,25 +25,24 @@ extension TimeInterval {
 
 // Liquid Glass on macOS 26+, system materials before that. Views use these and never check availability themselves.
 extension View {
-    func glassBackground(in shape: some Shape, interactive: Bool = false, tint: Color? = nil) -> some View {
-        modifier(GlassBackground(shape: shape, interactive: interactive, tint: tint))
+    func glassBackground(in shape: some Shape, interactive: Bool = false) -> some View {
+        modifier(GlassBackground(shape: shape, interactive: interactive))
     }
 }
 
 private struct GlassBackground<S: Shape>: ViewModifier {
     let shape: S
     let interactive: Bool
-    let tint: Color?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         if #available(macOS 26, *) {
-            content.glassEffect(.regular.tint(tint).interactive(interactive), in: shape)
+            content.glassEffect(.regular.interactive(interactive), in: shape)
         } else if reduceTransparency {
             content.background(Color(nsColor: .windowBackgroundColor), in: shape)
         } else {
             content.background {
-                shape.fill(.regularMaterial).overlay(shape.fill(tint ?? .clear))
+                shape.fill(.regularMaterial)
             }
         }
     }
@@ -72,7 +71,6 @@ extension NSWindow {
 enum Ink {
     static let primary = Color.primary
     static let secondary = Color.secondary
-    static let tertiary = Color.primary.opacity(0.4)
     static let fill = Color.primary.opacity(0.05)
     static let fillStrong = Color.primary.opacity(0.1)
     static let hairline = Color.primary.opacity(0.08)

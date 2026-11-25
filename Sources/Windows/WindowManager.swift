@@ -165,6 +165,9 @@ class WindowManager {
             }
             window.orderFrontRegardless()
         }
+        // Take the keyboard so the break buttons answer the first click and key press, not an activation click.
+        NSApp.activate(ignoringOtherApps: true)
+        breakWindows[NSScreen.screens.first?.displayID ?? 0]?.makeKey()
     }
 
     func hideBreakOverlay() {
