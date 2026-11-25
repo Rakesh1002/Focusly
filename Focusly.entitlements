@@ -6,8 +6,6 @@
     <string>933FJ3W655.unquest.focusly</string>
     <key>com.apple.security.app-sandbox</key>
     <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
     <key>com.apple.security.personal-information.calendars</key>
     <true/>
 </dict>
