@@ -3,169 +3,81 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var soundManager: SoundManager
-    @Binding var isPresented: Bool
-    
+    @EnvironmentObject var calendarManager: CalendarManager
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Settings")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .padding()
-            
-            ScrollView {
-                Form {
-                    Section("Timer") {
-                        HStack {
-                            Text("Work Duration:")
-                            Spacer()
-                            Text("\(Int(settings.workDuration/60)) minutes")
-                                .foregroundStyle(.white.opacity(0.9))
-                            Stepper("", 
-                                   value: Binding(
-                                    get: { settings.workDuration/60 },
-                                    set: { settings.workDuration = $0 * 60 }
-                                   ),
-                                   in: 1...120)
-                                .labelsHidden()
-                        }
-                        
-                        HStack {
-                            Text("Break Duration:")
-                            Spacer()
-                            Text("\(Int(settings.breakDuration/60)) minutes")
-                                .foregroundStyle(.white.opacity(0.9))
-                            Stepper("", 
-                                   value: Binding(
-                                    get: { settings.breakDuration/60 },
-                                    set: { settings.breakDuration = $0 * 60 }
-                                   ),
-                                   in: 1...60)
-                                .labelsHidden()
-                        }
-                    }
-                    
-                    Section("Display") {
-                        Toggle("Show Floating Timer", isOn: $settings.showTimeDisplay)
-                            .frame(maxWidth: .infinity)
-                        
-                        if settings.showTimeDisplay {
-                            Toggle("Show on All Screens", isOn: $settings.showFloatingTimerOnAllScreens)
-                                .frame(maxWidth: .infinity)
-                            Text("Display the floating timer on all connected monitors")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                        
-                        Toggle("Show Break Overlay", isOn: $settings.showBreakOverlay)
-                            .frame(maxWidth: .infinity)
-                    }
-                    
-                    Section("Sounds") {
-                        Toggle("Enable Sounds", isOn: $soundManager.isEnabled)
-                            .frame(maxWidth: .infinity)
-                        
-                        if soundManager.isEnabled {
-                            HStack {
-                                Text("Volume:")
-                                Slider(value: $soundManager.volume, in: 0...1)
-                                Text("\(Int(soundManager.volume * 100))%")
-                                    .frame(width: 40)
-                            }
-                            
-                            Picker("Work Complete:", selection: $soundManager.workCompleteSound) {
-                                ForEach(SoundType.allCases, id: \.self) { sound in
-                                    Text(sound.rawValue).tag(sound)
-                                }
-                            }
-                            .onChange(of: soundManager.workCompleteSound) { newValue in
-                                soundManager.previewSound(newValue)
-                            }
-                            
-                            Picker("Break Complete:", selection: $soundManager.breakCompleteSound) {
-                                ForEach(SoundType.allCases, id: \.self) { sound in
-                                    Text(sound.rawValue).tag(sound)
-                                }
-                            }
-                            .onChange(of: soundManager.breakCompleteSound) { newValue in
-                                soundManager.previewSound(newValue)
-                            }
-                        }
-                    }
-                    
-                    Section("Notifications") {
-                        Toggle("Break Notifications", isOn: $settings.breakNotifications)
-                            .frame(maxWidth: .infinity)
-                    }
-                    
-                    Section("Startup") {
-                        Toggle("Launch at Login", isOn: $settings.launchAtLogin)
-                            .frame(maxWidth: .infinity)
-                        Text("Focusly will start automatically when you log in")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
-                    }
-                    
-                    Section("About") {
-                        Button(action: {
-                            if let url = URL(string: "https://focusly.unquest.ai/privacy") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }) {
-                            HStack {
-                                Text("Privacy Policy")
-                                    .foregroundStyle(.white.opacity(0.9))
-                                Spacer()
-                                Image(systemName: "arrow.up.right.square")
-                                    .foregroundStyle(.white.opacity(0.5))
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .frame(maxWidth: .infinity)
-                        
-                        HStack {
-                            Text("Version")
-                                .foregroundStyle(.white.opacity(0.9))
-                            Spacer()
-                            Text("1.0.0 (6)")
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                    }
-                    
-                    Section("Keyboard Shortcuts") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ShortcutRow(key: "⌘⌥T", action: "Start/Stop Timer")
-                            ShortcutRow(key: "⌘⌥S", action: "Skip Break")
-                            ShortcutRow(key: "⌘⌥B", action: "Toggle Time Display")
-                        }
-                        .font(.caption)
-                    }
+        Form {
+            Section("Focus") {
+                LabeledContent("Focus block") {
+                    Stepper("\(Int(settings.workDuration / 60)) min", value: minutes(\.workDuration), in: 5...180, step: 5)
                 }
-                .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
+                LabeledContent("Break") {
+                    Stepper("\(Int(settings.breakDuration / 60)) min", value: minutes(\.breakDuration), in: 1...60)
+                }
+            }
+
+            Section("Floating timer") {
+                Toggle("Show floating timer", isOn: $settings.showTimeDisplay)
+                Toggle("On all displays", isOn: $settings.showFloatingTimerOnAllScreens)
+                    .disabled(!settings.showTimeDisplay)
+            }
+
+            Section("Break screen") {
+                Toggle("Cover the screen during breaks", isOn: $settings.showBreakOverlay)
+            }
+
+            Section("Notifications") {
+                Toggle("Break reminders", isOn: $settings.breakNotifications)
+            }
+
+            Section("Sound") {
+                Toggle("Play sounds", isOn: $soundManager.isEnabled)
+                Slider(value: $soundManager.volume, in: 0...1) {
+                    Text("Volume")
+                }
+                .disabled(!soundManager.isEnabled)
+            }
+
+            Section {
+                if calendarManager.hasAccess {
+                    LabeledContent("Status", value: "Connected")
+                } else {
+                    Button("Connect calendar") { calendarManager.connect() }
+                        .glassButton()
+                }
+            } header: {
+                Text("Calendar")
+            } footer: {
+                Text("Shows how long you have until your next meeting.")
+            }
+
+            Section("General") {
+                Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                Link("Privacy policy", destination: URL(string: "https://focusly.unquest.ai/privacy")!)
+                LabeledContent("Start or stop", value: "\u{2325}\u{2318}T")
+                LabeledContent("Skip break", value: "\u{2325}\u{2318}S")
+                LabeledContent("Show or hide floating timer", value: "\u{2325}\u{2318}B")
+                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-")
             }
         }
-        .foregroundStyle(.white)
-    }
-}
-
-struct ShortcutRow: View {
-    let key: String
-    let action: String
-    
-    var body: some View {
-        HStack {
-            Text(action)
-                .foregroundStyle(.white.opacity(0.7))
-            Spacer()
-            Text(key)
-                .fontWeight(.medium)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
-                .background(Color.white.opacity(0.2))
-                .cornerRadius(4)
-                .foregroundStyle(.white)
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .onChange(of: settings.showFloatingTimerOnAllScreens) { _ in
+            if settings.showTimeDisplay {
+                WindowManager.shared.showTimeDisplay()
+            }
+        }
+        .onChange(of: settings.showBreakOverlay) { show in
+            if !show {
+                WindowManager.shared.hideBreakOverlay()
+            }
         }
     }
 
+    private func minutes(_ keyPath: ReferenceWritableKeyPath<Settings, TimeInterval>) -> Binding<Double> {
+        Binding(
+            get: { settings[keyPath: keyPath] / 60 },
+            set: { settings[keyPath: keyPath] = $0 * 60 }
+        )
+    }
 }

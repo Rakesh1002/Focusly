@@ -5,19 +5,24 @@ final class TimerManagerTests: XCTestCase {
     var settings: Settings!
     var timerManager: TimerManager!
     var posted: [String] = []
+    var defaults: UserDefaults!
+    let suiteName = "FocuslyTests.TimerManager"
 
     override func setUp() {
         super.setUp()
         posted = []
         Notifier.post = { [unowned self] in self.posted.append($0.identifier) }
         settings = Settings()
-        timerManager = TimerManager(settings: settings)
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+        timerManager = TimerManager(settings: settings, defaults: defaults)
     }
 
     override func tearDown() {
         timerManager.stop()
         timerManager = nil
         settings = nil
+        defaults.removePersistentDomain(forName: suiteName)
         super.tearDown()
     }
 
@@ -70,5 +75,29 @@ final class TimerManagerTests: XCTestCase {
         if settings.breakNotifications {
             XCTAssertEqual(posted, ["breakComplete"])
         }
+    }
+
+    func testStartRemembersTaskAtFrontWithoutDuplicatesCappedAtFive() {
+        for name in ["a", "b", "c", "d", "e", "f", " b "] {
+            timerManager.task = name
+            timerManager.start()
+            timerManager.stop()
+        }
+        XCTAssertEqual(timerManager.recentTasks, ["b", "f", "e", "d", "c"])
+        XCTAssertEqual(TimerManager(settings: settings, defaults: defaults).recentTasks, timerManager.recentTasks)
+    }
+
+    func testStoppingAFocusBlockAsksWhereYouLeftOff() {
+        timerManager.start()
+        timerManager.stop()
+        XCTAssertTrue(timerManager.awaitingNote)
+        timerManager.saveNote("  wire the runway  ")
+        XCTAssertFalse(timerManager.awaitingNote)
+        XCTAssertEqual(TimerManager(settings: settings, defaults: defaults).lastNote, "wire the runway")
+    }
+
+    func testStopWhileIdleDoesNotAskForANote() {
+        timerManager.stop()
+        XCTAssertFalse(timerManager.awaitingNote)
     }
 }

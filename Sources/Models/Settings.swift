@@ -14,24 +14,13 @@ class Settings: ObservableObject {
     
     @Published var showTimeDisplay: Bool {
         didSet {
-            NSLog("⚙️ Settings: showTimeDisplay changed to \(showTimeDisplay), isInitialized: \(isInitialized)")
             saveSettings()
-            
-            // Only control WindowManager if we're fully initialized
-            guard isInitialized else {
-                NSLog("⚙️ Settings: Skipping WindowManager call - not yet initialized")
-                return
-            }
-            
-            // Use async to avoid potential crashes during property observation
+            guard isInitialized else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                
                 if self.showTimeDisplay {
-                    NSLog("⚙️ Settings: Calling showTimeDisplay()")
                     WindowManager.shared.showTimeDisplay()
                 } else {
-                    NSLog("⚙️ Settings: Calling hideTimeDisplay()")
                     WindowManager.shared.hideTimeDisplay()
                 }
             }
@@ -85,7 +74,6 @@ class Settings: ObservableObject {
         
         // Mark as initialized - now didSet handlers can trigger WindowManager
         isInitialized = true
-        NSLog("⚙️ Settings: Initialization complete, showTimeDisplay = \(showTimeDisplay)")
     }
     
     // Make this public so it can be called from MenuBarView
@@ -101,56 +89,22 @@ class Settings: ObservableObject {
     
     // MARK: - Launch at Login
     
-    /// Ensures launch at login is registered if the setting is enabled
-    /// Called on app startup to silently fix registration issues
+    /// Re-registers silently when the setting is on but the system lost the login item.
     private func ensureLaunchAtLoginRegistered() {
-        if #available(macOS 13.0, *) {
-            let currentStatus = SMAppService.mainApp.status
-            
-            // If setting is ON but not registered/enabled, try to register silently
-            if currentStatus != .enabled {
-                do {
-                    try SMAppService.mainApp.register()
-                    print("✅ Auto-registered launch at login on startup")
-                } catch {
-                    print("ℹ️ Launch at login auto-registration: \(error.localizedDescription)")
-                    // Don't show error on startup - only show when user manually toggles
-                }
-            }
-        }
+        guard SMAppService.mainApp.status != .enabled else { return }
+        try? SMAppService.mainApp.register()
     }
     
     private func setLaunchAtLogin(_ enabled: Bool) {
-        if #available(macOS 13.0, *) {
-            do {
-                let currentStatus = SMAppService.mainApp.status
-                print("📱 Current launch at login status: \(currentStatus.rawValue)")
-                
-                if enabled {
-                    // Register if not already enabled
-                    if currentStatus != .enabled {
-                        try SMAppService.mainApp.register()
-                        print("✅ Launch at login enabled")
-                        
-                        // Log status but don't show UI (auto-registration handles it)
-                        let newStatus = SMAppService.mainApp.status
-                        print("ℹ️ Launch at login status after registration: \(newStatus.rawValue)")
-                    } else {
-                        print("ℹ️ Launch at login already enabled")
-                    }
-                } else {
-                    // Unregister if currently enabled
-                    if currentStatus == .enabled {
-                        try SMAppService.mainApp.unregister()
-                        print("⛔ Launch at login disabled")
-                    }
-                }
-            } catch {
-                print("❌ Failed to set launch at login: \(error.localizedDescription)")
+        let status = SMAppService.mainApp.status
+        do {
+            if enabled && status != .enabled {
+                try SMAppService.mainApp.register()
+            } else if !enabled && status == .enabled {
+                try SMAppService.mainApp.unregister()
             }
-        } else {
-            // Fallback for older macOS versions
-            print("⚠️ Launch at login requires macOS 13.0 or later")
+        } catch {
+            NSLog("Focusly: launch at login change failed: %@", error.localizedDescription)
         }
     }
 }

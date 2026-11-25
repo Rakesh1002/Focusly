@@ -1,7 +1,6 @@
-import AVFoundation
 import AppKit
 
-enum SoundType: String, CaseIterable, Codable {
+enum SoundType: String {
     case none = "None"
     case workComplete = "Work Complete (Hero)"
     case breakTime = "Break Time (Glass)"
@@ -35,19 +34,14 @@ class SoundManager: ObservableObject {
         didSet { saveSettings() }
     }
     
-    @Published var workCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
-    
-    @Published var breakCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
+    // Chosen in an earlier version's per-event pickers; still honoured, no longer editable.
+    private let workCompleteSound: SoundType
+    private let breakCompleteSound: SoundType
     
     @Published var volume: Float {
         didSet { saveSettings() }
     }
     
-    private var audioPlayer: AVAudioPlayer?
     private let defaults = UserDefaults.app
     
     init() {
@@ -96,19 +90,11 @@ class SoundManager: ObservableObject {
         }
     }
     
-    // MARK: - Preview Sound
-    
-    func previewSound(_ soundType: SoundType) {
-        playSound(soundType)
-    }
-    
     // MARK: - Persistence
     
     private func saveSettings() {
         defaults.set(isEnabled, forKey: "soundEnabled")
         defaults.set(volume, forKey: "soundVolume")
-        defaults.set(workCompleteSound.rawValue, forKey: "workCompleteSound")
-        defaults.set(breakCompleteSound.rawValue, forKey: "breakCompleteSound")
     }
 }
 

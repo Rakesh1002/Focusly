@@ -1,139 +1,204 @@
 import SwiftUI
 
-enum MenuBarTab {
-    case main
-    case settings
-}
-
 struct MenuBarView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var timerManager: TimerManager
-    @State private var currentTab: MenuBarTab = .main
-    
+    @EnvironmentObject var calendarManager: CalendarManager
+    @State private var showingSettings = false
+
     var body: some View {
         VStack(spacing: 0) {
-            // Content with vibrant background
-            Group {
-                switch currentTab {
-                case .main:
-                    mainView
-                case .settings:
-                    SettingsView(isPresented: Binding(
-                        get: { currentTab == .settings },
-                        set: { if !$0 { currentTab = .main } }
-                    ))
-                    .frame(height: 500)
-                }
+            if showingSettings {
+                SettingsView()
+                    .frame(height: 440)
+            } else {
+                NowView()
+                    .padding(Spacing.l)
             }
-            .frame(maxWidth: .infinity)
-            .background(Color.appBackground)
-            
-            // Bottom navigation with glass effect
-            HStack(spacing: 8) {
-                if currentTab != .main {
-                    Button(action: { currentTab = .main }) {
-                        Image(systemName: "arrow.left")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Back")
+            Divider()
+            HStack(spacing: Spacing.l) {
+                Button {
+                    showingSettings.toggle()
+                } label: {
+                    Image(systemName: showingSettings ? "chevron.left" : "gearshape")
                 }
-                
+                .help(showingSettings ? "Back" : "Settings")
+                .accessibilityLabel(showingSettings ? "Back" : "Settings")
                 Spacer()
-                
-                // Show Quit on Settings screen, Settings button otherwise
-                if currentTab == .settings {
-                    Button(action: { NSApplication.shared.terminate(nil) }) {
-                        Image(systemName: "power")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.red.opacity(0.9))
-                            .frame(width: 44, height: 44)
+                if !settings.showTimeDisplay {
+                    Button("Show floating timer") { settings.showTimeDisplay = true }
+                }
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+            }
+            .buttonStyle(.borderless)
+            .padding(.horizontal, Spacing.l)
+            .padding(.vertical, Spacing.s)
+        }
+        .frame(width: 320)
+    }
+}
+
+struct NowView: View {
+    @EnvironmentObject var settings: Settings
+    @EnvironmentObject var timerManager: TimerManager
+    @EnvironmentObject var calendarManager: CalendarManager
+    @State private var note = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            if timerManager.isRunning {
+                running
+            } else {
+                idle
+            }
+            if timerManager.awaitingNote {
+                noteField
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var idle: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            if !timerManager.lastNote.isEmpty && !timerManager.awaitingNote {
+                Text("Last time: \(timerManager.lastNote)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("What are you working on?")
+                    .font(.headline)
+                HStack(spacing: Spacing.xs) {
+                    TextField("One task", text: $timerManager.task)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit(start)
+                    if !timerManager.recentTasks.isEmpty {
+                        Menu {
+                            ForEach(timerManager.recentTasks, id: \.self) { recent in
+                                Button(recent) { timerManager.task = recent }
+                            }
+                        } label: {
+                            Image(systemName: "clock.arrow.circlepath")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Recent tasks")
+                        .accessibilityLabel("Recent tasks")
                     }
-                    .buttonStyle(.plain)
-                    .help("Quit Focusly")
-                } else {
-                    Button(action: { currentTab = .settings }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Settings")
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 8)
-            .background(Color.cardBackground)
+            Picker("Focus block length", selection: blockMinutes) {
+                Text("25 min").tag(25)
+                Text("50 min").tag(50)
+                Text("90 min").tag(90)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            RunwayLine(blockLength: settings.workDuration)
+            Button(action: start) {
+                Text("Start").frame(maxWidth: .infinity)
+            }
+            .glassButton(prominent: true)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
         }
     }
-    
-    private var mainView: some View {
-        VStack(spacing: 12) {
-            Text(timerManager.isBreakTime ? "Break Time!" : "Focus Time")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.textPrimary)
-            
-            Text(formatTime(timerManager.remainingTime))
-                .font(.system(size: 56, weight: .bold, design: .monospaced))
-                .foregroundStyle(timerManager.isBreakTime ? Color.accentOrange : Color.accentBlue)
-                .padding(.vertical, 12)
-                .shadow(color: (timerManager.isBreakTime ? Color.accentOrange : Color.accentBlue).opacity(0.3), radius: 20, y: 0)
-                .scaleEffect(timerManager.isRunning ? 1.0 : 0.98)
-                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: timerManager.isRunning)
-            
-            // Primary Action - Following Apple HIG for critical actions
-            VStack(spacing: 12) {
-                Button(action: {
-                    if timerManager.isRunning {
-                        timerManager.stop()
-                    } else {
-                        timerManager.start()
-                        // Close popover when starting timer
-                        NotificationCenter.default.post(name: NSNotification.Name("ClosePopover"), object: nil)
-                    }
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: timerManager.isRunning ? "stop.fill" : "play.fill")
-                            .font(.system(size: 20, weight: .bold))
-                        Text(timerManager.isRunning ? "Stop" : "Start")
-                            .font(.system(size: 19, weight: .bold))
-                    }
-                    .frame(width: 200, height: 56)
-                    .foregroundStyle(.white)
-                }
-                .buttonStyle(PrimaryButtonStyle(color: timerManager.isRunning ? .statusError : .statusSuccess))
-                .shadow(color: (timerManager.isRunning ? Color.statusError : Color.statusSuccess).opacity(0.4), radius: 12, y: 6)
-                
+
+    private var running: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(timerManager.isBreakTime ? "Break" : headline)
+                .font(.headline)
+                .lineLimit(2)
+            Text(timerManager.remainingTime.clock)
+                .font(.timer)
+            if !timerManager.isBreakTime {
+                RunwayLine(blockLength: timerManager.remainingTime)
+            }
+            HStack(spacing: Spacing.s) {
+                Button(timerManager.isBreakTime ? "End session" : "Stop") { timerManager.stop() }
+                    .glassButton()
                 if timerManager.isBreakTime {
-                    Button("Skip Break") {
-                        timerManager.skipBreakStartWork()
-                    }
-                    .buttonStyle(SecondaryButtonStyle())
-                    .transition(.smoothScale)
+                    Button("Skip break") { timerManager.skipBreakStartWork() }
+                        .glassButton(prominent: true)
+                }
+            }
+            .controlSize(.large)
+            .glassGroup()
+        }
+    }
+
+    private var noteField: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text("Where did you leave off?")
+                .font(.headline)
+            TextField("So you can pick it up next time", text: $note, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...3)
+                .onSubmit(saveNote)
+            HStack {
+                Spacer()
+                Button("Skip") { timerManager.awaitingNote = false }
+                    .glassButton()
+                Button("Save", action: saveNote)
+                    .glassButton()
+                    .disabled(note.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .glassGroup()
+        }
+    }
+
+    private var headline: String {
+        let task = timerManager.task.trimmingCharacters(in: .whitespacesAndNewlines)
+        return task.isEmpty ? "Focusing" : task
+    }
+
+    private var blockMinutes: Binding<Int> {
+        Binding(
+            get: { Int(settings.workDuration / 60) },
+            set: { settings.workDuration = TimeInterval($0 * 60) }
+        )
+    }
+
+    private func start() {
+        timerManager.start()
+        NotificationCenter.default.post(name: NSNotification.Name("ClosePopover"), object: nil)
+    }
+
+    private func saveNote() {
+        guard !note.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        timerManager.saveNote(note)
+        note = ""
+    }
+}
+
+struct RunwayLine: View {
+    @EnvironmentObject var calendarManager: CalendarManager
+    let blockLength: TimeInterval
+
+    var body: some View {
+        if calendarManager.hasAccess {
+            TimelineView(.everyMinute) { _ in
+                let now = Date()
+                if let event = calendarManager.nextEvent(after: now),
+                   event.startDate.timeIntervalSince(now) < 3 * 3600 {
+                    let startsIn = event.startDate.timeIntervalSince(now)
+                    let collides = startsIn < blockLength
+                    Label(
+                        collides
+                            ? "\(event.title) in \(startsIn.shortDuration), before this block ends"
+                            : "\(event.title) in \(startsIn.shortDuration)",
+                        systemImage: collides ? "exclamationmark.circle" : "calendar"
+                    )
+                    .font(.callout)
+                    .foregroundStyle(collides ? Color.accentColor : .secondary)
+                } else {
+                    Label("No meetings in the next 3 hours", systemImage: "calendar")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
-        .onChange(of: settings.showFloatingTimerOnAllScreens) { _ in
-            if settings.showTimeDisplay {
-                WindowManager.shared.showTimeDisplay()
-            }
-        }
-        .onChange(of: settings.showBreakOverlay) { show in
-            if !show {
-                WindowManager.shared.hideBreakOverlay()
-            }
-        }
-    }
-    
-    private func formatTime(_ timeInterval: TimeInterval) -> String {
-        let minutes = Int(timeInterval) / 60
-        let seconds = Int(timeInterval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
     }
 }

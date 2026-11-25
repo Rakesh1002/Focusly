@@ -9,16 +9,11 @@ struct CalendarEvent: Identifiable {
     let endDate: Date
     let isAllDay: Bool
     let calendar: String
-    
-    var duration: TimeInterval {
-        endDate.timeIntervalSince(startDate)
-    }
 }
 
 class CalendarManager: ObservableObject {
     @Published var hasAccess = false
     @Published var upcomingEvents: [CalendarEvent] = []
-    @Published var nextMeeting: CalendarEvent?
     
     private let eventStore = EKEventStore()
     private var timer: Timer?
@@ -92,8 +87,6 @@ class CalendarManager: ObservableObject {
                 calendar: "Work"
             )
         ]
-        
-        nextMeeting = upcomingEvents.first
     }
     
     // MARK: - Calendar Access
@@ -165,6 +158,15 @@ class CalendarManager: ObservableObject {
         }
     }
     
+    /// Asks once; after a denial the system won't ask again, so send the user to Privacy settings instead.
+    func connect() {
+        if accessStatus == .notDetermined {
+            requestCalendarAccess()
+        } else {
+            openSystemPreferences()
+        }
+    }
+
     func openSystemPreferences() {
         // Use the x-apple.systempreferences URL scheme (allowed in sandboxed apps)
         // This works for both macOS 13+ (System Settings) and earlier versions (System Preferences)
@@ -202,15 +204,6 @@ class CalendarManager: ObservableObject {
                 calendar: event.calendar.title
             )
         }.sorted { $0.startDate < $1.startDate }
-        
-        updateNextMeeting()
-    }
-    
-    private func updateNextMeeting() {
-        let now = Date()
-        nextMeeting = upcomingEvents.first { event in
-            !event.isAllDay && event.startDate > now
-        }
     }
     
     private func startEventRefresh() {
@@ -227,16 +220,9 @@ class CalendarManager: ObservableObject {
             }
         }
     }
-    
-    func timeUntilNextMeeting() -> TimeInterval? {
-        guard let next = nextMeeting else { return nil }
-        return next.startDate.timeIntervalSinceNow
-    }
-    
-    func canFitFocusSession(duration: TimeInterval) -> Bool {
-        guard let timeUntilMeeting = timeUntilNextMeeting() else {
-            return true // No upcoming meeting
-        }
-        return timeUntilMeeting >= duration + 300 // 5 minutes buffer
+
+    /// Computed from the cached list at call time so a meeting that has started drops out between 5-minute refreshes.
+    func nextEvent(after date: Date = Date()) -> CalendarEvent? {
+        upcomingEvents.first { !$0.isAllDay && $0.startDate > date }
     }
 }
