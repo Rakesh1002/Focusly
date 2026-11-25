@@ -51,6 +51,22 @@ struct SettingsView: View {
                 Text("Shows how long you have until your next meeting.")
             }
 
+            Section {
+                Button("Copy Claude Code hooks") { copy(AgentHooks.claudeCode) }
+                    .help("Paste into ~/.claude/settings.json or a project's .claude/settings.json")
+                Button("Copy Codex notify line") { copy(AgentHooks.codex) }
+                    .help("Paste into ~/.codex/config.toml")
+                Button("Copy Cursor hooks") { copy(AgentHooks.cursor) }
+                    .help("Paste into ~/.cursor/hooks.json")
+                Button("Send a test") {
+                    NSWorkspace.shared.open(URL(string: "focusly://agent?state=done&name=Test")!)
+                }
+            } header: {
+                Text("Agent hand-off")
+            } footer: {
+                Text("Your coding agent tells the floating timer when it is working, and calls you back when it finishes or needs you.")
+            }
+
             Section("General") {
                 Toggle("Launch at login", isOn: $settings.launchAtLogin)
                 Link("Privacy policy", destination: URL(string: "https://focusly.unquest.ai/privacy")!)
@@ -74,10 +90,41 @@ struct SettingsView: View {
         }
     }
 
+    private func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
     private func minutes(_ keyPath: ReferenceWritableKeyPath<Settings, TimeInterval>) -> Binding<Double> {
         Binding(
             get: { settings[keyPath: keyPath] / 60 },
             set: { settings[keyPath: keyPath] = $0 * 60 }
         )
     }
+}
+
+// The app is sandboxed and can't edit agent config files, so the user pastes these.
+// shortcut: project names with spaces break the URL; percent-encode if users report it.
+enum AgentHooks {
+    static let claudeCode = #"""
+    {
+      "hooks": {
+        "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }],
+        "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }],
+        "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }]
+      }
+    }
+    """#
+
+    static let codex = #"notify = ["bash", "-lc", "open -g 'focusly://agent?state=done&name=Codex'"]"#
+
+    static let cursor = #"""
+    {
+      "version": 1,
+      "hooks": {
+        "beforeSubmitPrompt": [{ "command": "open -g 'focusly://agent?state=working&name=Cursor'" }],
+        "stop": [{ "command": "open -g 'focusly://agent?state=done&name=Cursor'" }]
+      }
+    }
+    """#
 }

@@ -12,17 +12,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let soundManager = SoundManager()
     let calendarManager = CalendarManager()
     let focusMonitor = FocusMonitor()
+    let agentWatch = AgentWatch()
     private var cancellables = Set<AnyCancellable>()
 
     override init() {
         self.timerManager = TimerManager(settings: settings)
         super.init()
         self.timerManager.soundManager = soundManager
+        agentWatch.soundManager = soundManager
+        agentWatch.focusMonitor = focusMonitor
+    }
+
+    // Handling the URL event ourselves keeps SwiftUI's WindowGroup from opening a window for every focusly:// URL.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURL(_:withReply:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+
+    @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
+        guard let string = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
+              let url = URL(string: string) else { return }
+        agentWatch.handle(url: url)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppSetupManager.shared.performFirstLaunchSetup()
         AppSetupManager.shared.handleAppUpdate()
+        UNUserNotificationCenter.current().delegate = self
 
         setupStatusItem()
         setupKeyboardShortcuts()
@@ -30,7 +50,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             settings: settings,
             timerManager: timerManager,
             calendarManager: calendarManager,
-            focusMonitor: focusMonitor
+            focusMonitor: focusMonitor,
+            agentWatch: agentWatch
         )
 
         hideDefaultWindow()
@@ -229,6 +250,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Show banners even while the popover has Focusly frontmost.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        if response.notification.request.identifier == AgentWatch.notificationID {
+            DispatchQueue.main.async { self.agentWatch.returnToAgent() }
+        }
+        completionHandler()
     }
 }
 

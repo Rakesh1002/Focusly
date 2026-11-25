@@ -65,6 +65,7 @@ struct TimeDisplayWindow: View {
     @EnvironmentObject var timerManager: TimerManager
     @EnvironmentObject var calendarManager: CalendarManager
     @EnvironmentObject var focusMonitor: FocusMonitor
+    @EnvironmentObject var agentWatch: AgentWatch
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     weak var window: TimeOverlayWindow?
     @State private var hovering = false
@@ -104,6 +105,11 @@ struct TimeDisplayWindow: View {
                 }
                 .font(.caption)
                 .padding(.leading, Self.leadingSlot + Spacing.s)
+                if let agentState = agentWatch.state {
+                    agentRow(agentState)
+                        .font(.caption)
+                        .padding(.leading, Self.leadingSlot + Spacing.s)
+                }
             }
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
@@ -160,8 +166,31 @@ struct TimeDisplayWindow: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: hovering)
     }
 
+    @ViewBuilder private func agentRow(_ state: AgentWatch.State) -> some View {
+        if state == .working, let since = agentWatch.since {
+            HStack(spacing: Spacing.xs) {
+                Text("\(agentWatch.name) working \u{00B7}")
+                Text(timerInterval: since...Date.distantFuture, countsDown: false)
+                    .monospacedDigit()
+                if !agentWatch.project.isEmpty {
+                    Text("\u{00B7} \(agentWatch.project)").lineLimit(1)
+                }
+            }
+            .foregroundStyle(.secondary)
+        } else {
+            Text("\(agentWatch.name) \(state == .done ? "done" : "needs you"), click to return")
+                .fontWeight(.medium)
+                .foregroundStyle(Color.accentColor)
+                .lineLimit(1)
+        }
+    }
+
     private func click() {
-        NotificationCenter.default.post(name: NSNotification.Name("OpenMainPopover"), object: nil)
+        if agentWatch.state == .done || agentWatch.state == .waiting {
+            agentWatch.returnToAgent()
+        } else {
+            NotificationCenter.default.post(name: NSNotification.Name("OpenMainPopover"), object: nil)
+        }
     }
 
     private var task: String {

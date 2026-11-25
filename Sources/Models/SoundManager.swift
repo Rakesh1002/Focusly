@@ -79,6 +79,12 @@ class SoundManager: ObservableObject {
         playSound(breakCompleteSound)
     }
     
+    /// A drifting user hears the agent even with sounds off; the notification alone is easy to miss in a chat app.
+    func playAgentSound(evenIfMuted: Bool) {
+        guard isEnabled || evenIfMuted else { return }
+        playSound(.notification)
+    }
+    
     private func playSound(_ soundType: SoundType) {
         guard soundType != .none,
               let soundName = soundType.systemSoundName else { return }

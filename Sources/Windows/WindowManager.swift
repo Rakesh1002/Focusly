@@ -21,6 +21,7 @@ class WindowManager {
     private var timerManager: TimerManager?
     private var calendarManager: CalendarManager?
     private var focusMonitor: FocusMonitor?
+    private var agentWatch: AgentWatch?
 
     private init() {
         NotificationCenter.default.addObserver(
@@ -31,7 +32,9 @@ class WindowManager {
         )
     }
 
-    func configure(settings: Settings, timerManager: TimerManager, calendarManager: CalendarManager, focusMonitor: FocusMonitor) {
+    func configure(settings: Settings, timerManager: TimerManager, calendarManager: CalendarManager,
+                   focusMonitor: FocusMonitor, agentWatch: AgentWatch) {
+        self.agentWatch = agentWatch
         self.settings = settings
         self.timerManager = timerManager
         self.calendarManager = calendarManager
@@ -134,12 +137,13 @@ class WindowManager {
     }
 
     private func makeAnchorView(for window: TimeOverlayWindow) -> NSView? {
-        guard let settings, let timerManager, let calendarManager, let focusMonitor else { return nil }
+        guard let settings, let timerManager, let calendarManager, let focusMonitor, let agentWatch else { return nil }
         return NSHostingView(rootView: TimeDisplayWindow(window: window)
             .environmentObject(settings)
             .environmentObject(timerManager)
             .environmentObject(calendarManager)
-            .environmentObject(focusMonitor))
+            .environmentObject(focusMonitor)
+            .environmentObject(agentWatch))
     }
 
     func showBreakOverlay() {
