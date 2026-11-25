@@ -189,7 +189,7 @@ struct TimeDisplayWindow: View {
         if agentWatch.state == .done || agentWatch.state == .waiting {
             agentWatch.returnToAgent()
         } else {
-            NotificationCenter.default.post(name: NSNotification.Name("OpenMainPopover"), object: nil)
+            NotificationCenter.default.post(name: NSNotification.Name("OpenMainPopover"), object: window)
         }
     }
 

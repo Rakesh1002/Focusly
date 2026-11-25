@@ -17,6 +17,7 @@ enum Radius {
 
 extension Font {
     static let timer = Font.system(.largeTitle, design: .rounded).monospacedDigit()
+    static let heroTimer = Font.system(size: 52, weight: .semibold, design: .rounded).monospacedDigit()
 }
 
 extension TimeInterval {

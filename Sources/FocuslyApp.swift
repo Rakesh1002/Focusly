@@ -92,7 +92,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(showPopover),
+            selector: #selector(openFromAnchor(_:)),
             name: NSNotification.Name("OpenMainPopover"),
             object: nil
         )
@@ -177,15 +177,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover?.isShown == true {
             closePopover()
         } else {
-            showPopover()
+            showPopover(from: statusItem?.button)
         }
     }
 
-    @objc func showPopover() {
-        guard let button = statusItem?.button, let popover, !popover.isShown else { return }
+    // A crowded menu bar hides the status item behind the overflow chevron, so open beside the anchor that was clicked.
+    @objc private func openFromAnchor(_ note: Notification) {
+        showPopover(from: (note.object as? NSWindow)?.contentView ?? statusItem?.button)
+    }
+
+    private func showPopover(from view: NSView?) {
+        guard let view, let popover, !popover.isShown else { return }
         // An accessory app must be active for the popover's text fields to take keyboard focus.
         NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
     }
 
