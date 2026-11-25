@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var soundManager: SoundManager
     @EnvironmentObject var calendarManager: CalendarManager
+    let openAgentSetup: () -> Void
 
     var body: some View {
         Form {
@@ -52,19 +53,19 @@ struct SettingsView: View {
             }
 
             Section {
-                Button("Copy Claude Code hooks") { copy(AgentHooks.claudeCode) }
-                    .help("Paste into ~/.claude/settings.json or a project's .claude/settings.json")
-                Button("Copy Codex notify line") { copy(AgentHooks.codex) }
-                    .help("Paste at the top of ~/.codex/config.toml, above any [section]")
-                Button("Copy Cursor hooks") { copy(AgentHooks.cursor) }
-                    .help("Paste into ~/.cursor/hooks.json")
-                Button("Send a test") {
-                    NSWorkspace.shared.open(URL(string: "focusly://agent?state=done&name=Test")!)
+                Button(action: openAgentSetup) {
+                    HStack {
+                        Text("Coding agent hand-off")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Ink.tertiary)
+                    }
+                    .contentShape(Rectangle())
                 }
-            } header: {
-                Text("Agent hand-off")
+                .buttonStyle(.plain)
             } footer: {
-                Text("Your coding agent tells the floating timer when it is working, and calls you back when it finishes or needs you.")
+                Text("Claude Code, Codex or Cursor can tell the floating timer when they are working and call you back when they finish.")
             }
 
             Section("General") {
@@ -90,41 +91,10 @@ struct SettingsView: View {
         }
     }
 
-    private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
-
     private func minutes(_ keyPath: ReferenceWritableKeyPath<Settings, TimeInterval>) -> Binding<Double> {
         Binding(
             get: { settings[keyPath: keyPath] / 60 },
             set: { settings[keyPath: keyPath] = $0 * 60 }
         )
     }
-}
-
-// The app is sandboxed and can't edit agent config files, so the user pastes these.
-// shortcut: project names with spaces break the URL; percent-encode if users report it.
-enum AgentHooks {
-    static let claudeCode = #"""
-    {
-      "hooks": {
-        "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
-        "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
-        "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }]
-      }
-    }
-    """#
-
-    static let codex = #"notify = ["bash", "-lc", "open -g \"focusly://agent?state=done&name=Codex&project=${PWD##*/}&app=${__CFBundleIdentifier}\""]"#
-
-    static let cursor = #"""
-    {
-      "version": 1,
-      "hooks": {
-        "beforeSubmitPrompt": [{ "command": "open -g \"focusly://agent?state=working&name=Cursor&app=${__CFBundleIdentifier}\"" }],
-        "stop": [{ "command": "open -g \"focusly://agent?state=done&name=Cursor&app=${__CFBundleIdentifier}\"" }]
-      }
-    }
-    """#
 }

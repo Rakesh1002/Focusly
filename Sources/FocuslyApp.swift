@@ -144,7 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .filter { $0 }
             .first()
             .sink { _ in
-                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+                Notifier.requestAuthorization { _ in }
             }
             .store(in: &cancellables)
 

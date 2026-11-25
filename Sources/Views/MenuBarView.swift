@@ -1,29 +1,39 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @State private var showingSettings = false
+    private enum Screen { case settings, agent }
+
+    @State private var path: [Screen] = []
 
     var body: some View {
         VStack(spacing: 0) {
-            if showingSettings {
-                HStack(spacing: Spacing.s) {
-                    SquareIconButton(symbol: "chevron.left", label: "Back") { showingSettings = false }
-                    Text("Settings")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Ink.primary)
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                SettingsView()
-                    .frame(height: 480)
-            } else {
-                NowView { showingSettings = true }
+            switch path.last {
+            case nil:
+                NowView(openSettings: { path.append(.settings) }, openAgentSetup: { path.append(.agent) })
                     .padding(14)
                 footer
+            case .settings:
+                header("Settings")
+                SettingsView { path.append(.agent) }
+                    .frame(height: 480)
+            case .agent:
+                header("Coding agent")
+                AgentSetupView()
             }
         }
         .frame(width: 340)
+    }
+
+    private func header(_ title: String) -> some View {
+        HStack(spacing: Spacing.s) {
+            SquareIconButton(symbol: "chevron.left", label: "Back") { path.removeLast() }
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
     }
 
     private var footer: some View {
@@ -34,7 +44,7 @@ struct MenuBarView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Ink.tertiary)
             Spacer()
-            SquareIconButton(symbol: "gearshape.fill", label: "Settings") { showingSettings = true }
+            SquareIconButton(symbol: "gearshape.fill", label: "Settings") { path.append(.settings) }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -48,6 +58,7 @@ struct NowView: View {
     @EnvironmentObject var calendarManager: CalendarManager
     @EnvironmentObject var agentWatch: AgentWatch
     let openSettings: () -> Void
+    let openAgentSetup: () -> Void
     @State private var note = ""
 
     private var mood: Mood { Mood(running: timerManager.isRunning, onBreak: timerManager.isBreakTime) }
@@ -117,7 +128,10 @@ struct NowView: View {
     private var subtitle: String {
         switch mood {
         case .ready:
-            if !timerManager.lastNote.isEmpty && !timerManager.awaitingNote {
+            if timerManager.awaitingNote {
+                return "Block done. Leave yourself a note for next time."
+            }
+            if !timerManager.lastNote.isEmpty {
                 return "Last time: \(timerManager.lastNote)"
             }
             return "Pick one task. Everything else can wait."
@@ -213,7 +227,7 @@ struct NowView: View {
         case nil:
             ActionCard(symbol: "sparkles", title: "Coding agent",
                        value: Text("Idle").foregroundColor(Ink.tertiary),
-                       action: ("Set up", openSettings))
+                       action: ("Set up", openAgentSetup))
         }
     }
 

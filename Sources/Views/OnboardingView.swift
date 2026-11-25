@@ -1,5 +1,4 @@
 import SwiftUI
-import UserNotifications
 
 struct OnboardingView: View {
     @EnvironmentObject var settings: Settings
@@ -60,7 +59,38 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             TaskField { step = 1 }
             DurationPicker()
+            anchorPreview
         }
+    }
+
+    private var anchorPreview: some View {
+        let task = timerManager.task.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return VStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
+                FocusRing(progress: 0.3, lineWidth: 2.5)
+                    .frame(width: 16, height: 16)
+                Text(task.isEmpty ? "Your one task" : task)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(task.isEmpty ? Ink.tertiary : Ink.primary)
+                    .lineLimit(1)
+                Spacer(minLength: Spacing.s)
+                Text(settings.workDuration.clock)
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(width: 280)
+            .glassBackground(in: shape)
+            .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
+            Text("Your floating timer, always in view")
+                .font(.system(size: 11))
+                .foregroundStyle(Ink.tertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, Spacing.s)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Preview of the floating timer")
     }
 
     private var helpersStep: some View {
@@ -130,14 +160,14 @@ struct OnboardingView: View {
     }
 
     private func requestNotifications() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        Notifier.requestAuthorization { granted in
             DispatchQueue.main.async { notificationsAllowed = granted }
         }
     }
 
     private func refreshNotificationStatus() {
-        UNUserNotificationCenter.current().getNotificationSettings { status in
-            DispatchQueue.main.async { notificationsAllowed = status.authorizationStatus == .authorized }
+        Notifier.isAuthorized { allowed in
+            DispatchQueue.main.async { notificationsAllowed = allowed }
         }
     }
 }
