@@ -1,38 +1,26 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <!-- Modern gradient background -->
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#7B68EE;stop-opacity:1" />
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A2A2F"/>
+      <stop offset="1" stop-color="#0D0D10"/>
     </linearGradient>
-    <linearGradient id="circleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.95" />
-      <stop offset="100%" style="stop-color:#F0F0F0;stop-opacity:0.9" />
-    </linearGradient>
-    <filter id="shadow">
-      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-opacity="0.25"/>
+    <radialGradient id="sheen" cx="0.5" cy="0" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.35"/>
     </filter>
   </defs>
-  
-  <!-- Rounded square background with gradient -->
-  <rect width="1024" height="1024" rx="180" fill="url(#bgGradient)"/>
-  
-  <!-- Main timer circle (outer ring) -->
-  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#circleGradient)" stroke-width="48" opacity="0.3"/>
-  
-  <!-- Progress arc (representing focus time) - 75% complete -->
-  <circle cx="512" cy="512" r="320" fill="none" stroke="url(#circleGradient)" stroke-width="48" 
-          stroke-dasharray="1507.964 502.655" 
-          stroke-dashoffset="0"
-          stroke-linecap="round"
-          transform="rotate(-90 512 512)"/>
-  
-  <!-- Center focus dot -->
-  <circle cx="512" cy="512" r="80" fill="url(#circleGradient)" filter="url(#shadow)"/>
-  
-  <!-- Timer hand (minimal, pointing at progress) -->
-  <line x1="512" y1="512" x2="512" y2="260" 
-        stroke="url(#circleGradient)" stroke-width="24" 
-        stroke-linecap="round"
-        filter="url(#shadow)"/>
+  <!-- macOS icon grid: 824pt tile centred on the 1024 canvas -->
+  <g filter="url(#drop)">
+    <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)"/>
+  </g>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sheen)"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="4"/>
+  <circle cx="512" cy="512" r="236" fill="none" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="46"/>
+  <!-- 70% progress arc from twelve o'clock -->
+  <circle cx="512" cy="512" r="236" fill="none" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round"
+          stroke-dasharray="1038.0 444.9" transform="rotate(-90 512 512)"/>
+  <circle cx="512" cy="512" r="50" fill="#FFFFFF"/>
 </svg>

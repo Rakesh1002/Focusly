@@ -356,8 +356,8 @@ This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.t
 
 ## 📞 Support & Contact
 
-- **Email**: support@focusly.unquest.ai
-- **Website**: https://focusly.unquest.ai
+- **Email**: support@focusly.roushan.xyz
+- **Website**: https://focusly.roushan.xyz
 - **Twitter**: @FocuslyApp
 - **GitHub Issues**: [Report bugs and request features](https://github.com/rakesh1002/Focusly/issues)
 
