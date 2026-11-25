@@ -43,7 +43,7 @@ struct SettingsView: View {
                     LabeledContent("Status", value: "Connected")
                 } else {
                     Button("Connect calendar") { calendarManager.connect() }
-                        .glassButton()
+                        .buttonStyle(PanelButtonStyle(height: 30))
                 }
             } header: {
                 Text("Calendar")
@@ -78,6 +78,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .tint(Brand.tide[0])
         .onChange(of: settings.showFloatingTimerOnAllScreens) { _ in
             if settings.showTimeDisplay {
                 WindowManager.shared.showTimeDisplay()

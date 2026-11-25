@@ -125,11 +125,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .environmentObject(settings)
             .environmentObject(timerManager)
             .environmentObject(soundManager)
-            .environmentObject(calendarManager))
+            .environmentObject(calendarManager)
+            .environmentObject(agentWatch))
         hostingController.sizingOptions = .preferredContentSize
 
         let popover = NSPopover()
         popover.behavior = .transient
+        // The tray is an always-dark immersive surface; keep the popover chrome and arrow dark to match.
+        popover.appearance = NSAppearance(named: .darkAqua)
+        if #available(macOS 14, *) {
+            // Let the violet panel run under the arrow instead of leaving a strip of system chrome.
+            popover.hasFullSizeContent = true
+        }
         popover.contentViewController = hostingController
         self.popover = popover
 
@@ -209,15 +216,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         .environmentObject(calendarManager)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 480),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Welcome to Focusly"
         let host = NSHostingView(rootView: onboardingView)
-        host.frame = NSRect(x: 0, y: 0, width: 460, height: 420)
+        host.frame = NSRect(x: 0, y: 0, width: 480, height: 480)
         host.autoresizingMask = [.width, .height]
+        window.appearance = NSAppearance(named: .darkAqua)
         window.setGlassContent(host, cornerRadius: 16)
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = true

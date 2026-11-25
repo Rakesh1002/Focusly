@@ -1,58 +1,47 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @EnvironmentObject var settings: Settings
     @EnvironmentObject var timerManager: TimerManager
-    @EnvironmentObject var calendarManager: CalendarManager
     @State private var showingSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
             if showingSettings {
+                HStack(spacing: Spacing.s) {
+                    SquareIconButton(symbol: "chevron.left", label: "Back") { showingSettings = false }
+                    Text("Settings")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
                 SettingsView()
-                    .frame(height: 440)
+                    .frame(height: 480)
             } else {
-                NowView()
-                    .padding(Spacing.l)
+                NowView { showingSettings = true }
+                    .padding(14)
+                footer
             }
-            Divider()
-            footer
         }
-        .frame(width: 320)
+        .frame(width: 360)
+        .background(ImmersiveBackground(mood: Mood(running: timerManager.isRunning, onBreak: timerManager.isBreakTime)))
+        .environment(\.colorScheme, .dark)
     }
 
     private var footer: some View {
-        HStack(spacing: Spacing.m) {
-            iconButton(showingSettings ? "chevron.left" : "gearshape", label: showingSettings ? "Back" : "Settings") {
-                showingSettings.toggle()
-            }
-            if showingSettings {
-                Text("Settings").font(.headline)
-            } else {
-                iconButton(
-                    settings.showTimeDisplay ? "pip.fill" : "pip",
-                    label: settings.showTimeDisplay ? "Hide floating timer" : "Show floating timer"
-                ) {
-                    settings.showTimeDisplay.toggle()
-                }
-            }
+        HStack {
+            SquareIconButton(symbol: "power", label: "Quit Focusly") { NSApplication.shared.terminate(nil) }
             Spacer()
-            iconButton("power", label: "Quit Focusly") { NSApplication.shared.terminate(nil) }
+            Text("\u{2325}\u{2318}T starts or stops a block")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Ink.tertiary)
+            Spacer()
+            SquareIconButton(symbol: "gearshape.fill", label: "Settings") { showingSettings = true }
         }
-        .padding(.horizontal, Spacing.l)
-        .padding(.vertical, Spacing.s)
-    }
-
-    private func iconButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .frame(width: 20, height: 20)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(.secondary)
-        .help(label)
-        .accessibilityLabel(label)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .overlay(alignment: .top) { Rectangle().fill(Ink.hairline).frame(height: 0.5) }
     }
 }
 
@@ -60,118 +49,88 @@ struct NowView: View {
     @EnvironmentObject var settings: Settings
     @EnvironmentObject var timerManager: TimerManager
     @EnvironmentObject var calendarManager: CalendarManager
+    @EnvironmentObject var agentWatch: AgentWatch
+    let openSettings: () -> Void
     @State private var note = ""
 
+    private var mood: Mood { Mood(running: timerManager.isRunning, onBreak: timerManager.isBreakTime) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            if timerManager.isRunning {
-                running
-            } else {
-                idle
+        VStack(spacing: 10) {
+            heroCard
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
+                TimelineView(.everyMinute) { context in meetingCard(now: context.date) }
+                agentCard
+                floatingTimerCard
+                breaksCard
             }
-            if timerManager.awaitingNote {
-                noteField
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var idle: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            if !timerManager.lastNote.isEmpty && !timerManager.awaitingNote {
-                Label(timerManager.lastNote, systemImage: "arrow.uturn.backward")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                    .accessibilityLabel("Last time: \(timerManager.lastNote)")
-            }
-            Text(settings.workDuration.clock)
-                .font(.heroTimer)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("\(Int(settings.workDuration / 60)) minute block")
-            HStack(spacing: Spacing.xs) {
-                TextField("What are you working on?", text: $timerManager.task)
-                    .textFieldStyle(.plain)
-                    .font(.body)
-                    .onSubmit(start)
-                if !timerManager.recentTasks.isEmpty {
-                    Menu {
-                        ForEach(timerManager.recentTasks, id: \.self) { recent in
-                            Button(recent) { timerManager.task = recent }
-                        }
-                    } label: {
-                        Image(systemName: "clock.arrow.circlepath")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Recent tasks")
-                    .accessibilityLabel("Recent tasks")
-                }
-            }
-            .padding(.horizontal, Spacing.m)
-            .padding(.vertical, Spacing.s)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: Radius.s))
-            HStack(spacing: Spacing.s) {
-                ForEach([25, 50, 90], id: \.self) { minutes in
-                    Button {
-                        settings.workDuration = TimeInterval(minutes * 60)
-                    } label: {
-                        Text("\(minutes) min").frame(maxWidth: .infinity)
-                    }
-                    .glassButton(prominent: Int(settings.workDuration / 60) == minutes)
-                    .accessibilityAddTraits(Int(settings.workDuration / 60) == minutes ? .isSelected : [])
-                }
-            }
-            .glassGroup()
-            RunwayLine(blockLength: settings.workDuration)
-            Button(action: start) {
-                Label("Start focus", systemImage: "play.fill").frame(maxWidth: .infinity)
-            }
-            .glassButton(prominent: true)
-            .controlSize(.large)
-            .keyboardShortcut(.defaultAction)
         }
     }
 
-    private var running: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(timerManager.isBreakTime ? "On break" : "Focusing")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(timerManager.isBreakTime ? Color.green : Color.accentColor)
-                    .textCase(.uppercase)
-                Text(timerManager.isBreakTime ? "Step away from the screen" : headline)
-                    .font(.title3.weight(.semibold))
+    // MARK: Hero
+
+    private var heroCard: some View {
+        VStack(spacing: Spacing.m) {
+            ZStack {
+                FocusRing(progress: timerManager.isRunning ? progress : 1, mood: mood, lineWidth: 9)
+                VStack(spacing: 2) {
+                    Text(ringLabel)
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(1.4)
+                        .foregroundStyle(Ink.tertiary)
+                    Text((timerManager.isRunning ? timerManager.remainingTime : settings.workDuration).clock)
+                        .font(.system(size: 44, weight: .light, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Ink.primary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            .frame(width: 164, height: 164)
+
+            VStack(spacing: 4) {
+                (Text("Focus: ") + Text(mood.word).foregroundColor(mood == .rest ? Brand.dawn[0] : Brand.accent))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Ink.primary)
+                Text(subtitle)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Ink.secondary)
+                    .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            Text(timerManager.remainingTime.clock)
-                .font(.heroTimer)
-                .frame(maxWidth: .infinity)
-            ProgressView(value: progress)
-                .tint(timerManager.isBreakTime ? .green : .accentColor)
-                .accessibilityLabel("Block progress")
-            if !timerManager.isBreakTime {
-                RunwayLine(blockLength: timerManager.remainingTime)
+
+            if timerManager.awaitingNote {
+                noteField
+            } else if timerManager.isRunning {
+                runningControls
+            } else {
+                idleControls
             }
-            HStack(spacing: Spacing.s) {
-                Button {
-                    timerManager.stop()
-                } label: {
-                    Text(timerManager.isBreakTime ? "End session" : "Stop").frame(maxWidth: .infinity)
-                }
-                .glassButton()
-                if timerManager.isBreakTime {
-                    Button {
-                        timerManager.skipBreakStartWork()
-                    } label: {
-                        Text("Skip break").frame(maxWidth: .infinity)
-                    }
-                    .glassButton(prominent: true)
-                }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(colors: [Color.white.opacity(0.13), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+    }
+
+    private var ringLabel: String {
+        switch mood {
+        case .ready: return "READY"
+        case .focus: return "FOCUS"
+        case .rest: return "BREAK"
+        }
+    }
+
+    private var subtitle: String {
+        switch mood {
+        case .ready:
+            if !timerManager.lastNote.isEmpty && !timerManager.awaitingNote {
+                return "Last time: \(timerManager.lastNote)"
             }
-            .controlSize(.large)
-            .glassGroup()
+            return "Pick one task. Everything else can wait."
+        case .focus: return headline
+        case .rest: return "Step away for a bit"
         }
     }
 
@@ -181,24 +140,113 @@ struct NowView: View {
         return min(max(1 - timerManager.remainingTime / total, 0), 1)
     }
 
+    // MARK: Controls
+
+    private var idleControls: some View {
+        VStack(spacing: 10) {
+            TaskField(onSubmit: start)
+            DurationPicker()
+            if let warning = collisionWarning(blockLength: settings.workDuration) {
+                Label(warning, systemImage: "exclamationmark.circle")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Brand.warning)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Button(action: start) {
+                Label("Start focus", systemImage: "play.fill")
+            }
+            .buttonStyle(PanelButtonStyle(kind: .cta))
+            .keyboardShortcut(.defaultAction)
+        }
+    }
+
+    private var runningControls: some View {
+        HStack(spacing: Spacing.s) {
+            Button(timerManager.isBreakTime ? "End session" : "Stop") { timerManager.stop() }
+                .buttonStyle(PanelButtonStyle())
+            if timerManager.isBreakTime {
+                Button("Skip break") { timerManager.skipBreakStartWork() }
+                    .buttonStyle(PanelButtonStyle(kind: .cta))
+            }
+        }
+    }
+
     private var noteField: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("Where did you leave off?")
-                .font(.headline)
-            TextField("So you can pick it up next time", text: $note, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
+        VStack(spacing: Spacing.s) {
+            TextField("Where did you leave off?", text: $note, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
                 .lineLimit(1...3)
                 .onSubmit(saveNote)
-            HStack {
-                Spacer()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Ink.fill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+            HStack(spacing: Spacing.s) {
                 Button("Skip") { timerManager.awaitingNote = false }
-                    .glassButton()
-                Button("Save", action: saveNote)
-                    .glassButton()
+                    .buttonStyle(PanelButtonStyle(height: 34))
+                Button("Save note", action: saveNote)
+                    .buttonStyle(PanelButtonStyle(kind: .cta, height: 34))
                     .disabled(note.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .glassGroup()
         }
+    }
+
+    // MARK: Cards
+
+    @ViewBuilder private func meetingCard(now: Date) -> some View {
+        if !calendarManager.hasAccess {
+            ActionCard(symbol: "calendar", title: "Next meeting",
+                       value: Text("Not connected").foregroundColor(Ink.tertiary),
+                       action: ("Connect", calendarManager.connect))
+        } else if let event = calendarManager.nextEvent(after: now) {
+            let startsIn = event.startDate.timeIntervalSince(now)
+            ActionCard(symbol: "calendar", title: event.title,
+                       value: Text("In \(startsIn.shortDuration)").foregroundColor(startsIn < 5 * 60 ? Brand.urgent : Brand.warning))
+        } else {
+            ActionCard(symbol: "calendar", title: "Next meeting",
+                       value: Text("Free for today").foregroundColor(Brand.accent))
+        }
+    }
+
+    @ViewBuilder private var agentCard: some View {
+        switch agentWatch.state {
+        case .working:
+            ActionCard(symbol: "sparkles", title: agentWatch.name,
+                       value: (Text("Working \u{00B7} ") + Text(timerInterval: (agentWatch.since ?? Date())...Date.distantFuture, countsDown: false))
+                        .foregroundColor(Brand.accent))
+        case .done, .waiting:
+            ActionCard(symbol: "sparkles", title: agentWatch.name,
+                       value: Text(agentWatch.state == .done ? "Finished" : "Needs you").foregroundColor(Brand.warning),
+                       action: ("Return", agentWatch.returnToAgent))
+        case nil:
+            ActionCard(symbol: "sparkles", title: "Coding agent",
+                       value: Text("Idle").foregroundColor(Ink.tertiary),
+                       action: ("Set up", openSettings))
+        }
+    }
+
+    private var floatingTimerCard: some View {
+        ActionCard(symbol: "pip", title: "Floating timer",
+                   value: Text(settings.showTimeDisplay ? "Showing" : "Hidden")
+                    .foregroundColor(settings.showTimeDisplay ? Brand.accent : Ink.tertiary),
+                   action: (settings.showTimeDisplay ? "Hide" : "Show", { settings.showTimeDisplay.toggle() }))
+    }
+
+    private var breaksCard: some View {
+        ActionCard(symbol: "cup.and.saucer", title: "Breaks",
+                   value: Text("\(Int(settings.breakDuration / 60)) min each")
+                    .foregroundColor(Brand.warning),
+                   action: ("Adjust", openSettings))
+    }
+
+    // MARK: Helpers
+
+    private func collisionWarning(blockLength: TimeInterval) -> String? {
+        guard calendarManager.hasAccess, let event = calendarManager.nextEvent() else { return nil }
+        let startsIn = event.startDate.timeIntervalSinceNow
+        guard startsIn < blockLength else { return nil }
+        return "\(event.title) starts in \(startsIn.shortDuration), before this block ends"
     }
 
     private var headline: String {
@@ -218,32 +266,77 @@ struct NowView: View {
     }
 }
 
-struct RunwayLine: View {
-    @EnvironmentObject var calendarManager: CalendarManager
-    let blockLength: TimeInterval
+struct TaskField: View {
+    @EnvironmentObject var timerManager: TimerManager
+    let onSubmit: () -> Void
 
     var body: some View {
-        if calendarManager.hasAccess {
-            TimelineView(.everyMinute) { _ in
-                let now = Date()
-                if let event = calendarManager.nextEvent(after: now),
-                   event.startDate.timeIntervalSince(now) < 3 * 3600 {
-                    let startsIn = event.startDate.timeIntervalSince(now)
-                    let collides = startsIn < blockLength
-                    Label(
-                        collides
-                            ? "\(event.title) in \(startsIn.shortDuration), before this block ends"
-                            : "\(event.title) in \(startsIn.shortDuration)",
-                        systemImage: collides ? "exclamationmark.circle" : "calendar"
-                    )
-                    .font(.callout)
-                    .foregroundStyle(collides ? Color.accentColor : .secondary)
-                } else {
-                    Label("No meetings in the next 3 hours", systemImage: "calendar")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+        HStack(spacing: Spacing.s) {
+            Image(systemName: "scope")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Ink.tertiary)
+            TextField("What are you working on?", text: $timerManager.task)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(Ink.primary)
+                .onSubmit(onSubmit)
+            if !timerManager.recentTasks.isEmpty {
+                Menu {
+                    ForEach(timerManager.recentTasks, id: \.self) { recent in
+                        Button(recent) { timerManager.task = recent }
+                    }
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
                 }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Recent tasks")
+                .accessibilityLabel("Recent tasks")
             }
         }
+        .padding(.horizontal, 12)
+        .frame(height: 36)
+        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+    }
+}
+
+struct DurationPicker: View {
+    @EnvironmentObject var settings: Settings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach([25, 50, 90], id: \.self) { minutes in
+                let selected = Int(settings.workDuration / 60) == minutes
+                Button {
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.85)) {
+                        settings.workDuration = TimeInterval(minutes * 60)
+                    }
+                } label: {
+                    Text("\(minutes) min")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(selected ? Ink.primary : Ink.secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 28)
+                        .background {
+                            if selected {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Ink.fillStrong)
+                                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(minutes) minute block")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
     }
 }

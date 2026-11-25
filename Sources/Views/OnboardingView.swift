@@ -19,118 +19,117 @@ struct OnboardingView: View {
                 helpersStep
             }
             Spacer(minLength: 0)
-            HStack {
-                Button("Skip") { onFinish(false) }
-                    .buttonStyle(.borderless)
-                Spacer()
-                if step == 0 {
-                    Button("Next") { step = 1 }
-                        .glassButton(prominent: true)
-                        .keyboardShortcut(.defaultAction)
-                } else {
-                    Button("Back") { step = 0 }
-                        .glassButton()
-                    Button("Start focusing") { onFinish(true) }
-                        .glassButton(prominent: true)
-                        .keyboardShortcut(.defaultAction)
+            ZStack {
+                HStack {
+                    Button(step == 0 ? "Skip" : "Back") {
+                        if step == 0 { onFinish(false) } else { step = 0 }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    Spacer()
                 }
+                Button(step == 0 ? "Next" : "Start") {
+                    if step == 0 { step = 1 } else { onFinish(true) }
+                }
+                .buttonStyle(OrbButtonStyle())
+                .keyboardShortcut(.defaultAction)
             }
-            .controlSize(.large)
         }
-        .padding(Spacing.xl)
-        .frame(width: 460, height: 420)
+        .padding(28)
+        .frame(width: 480, height: 480)
+        .background(ImmersiveBackground(style: .vivid))
+        .environment(\.colorScheme, .dark)
         .onAppear(perform: refreshNotificationStatus)
     }
 
     private var taskStep: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Welcome to Focusly")
-                    .font(.largeTitle.weight(.semibold))
-                Text("A small anchor in the corner of your screen that shows the one thing you are doing, how long you have, and brings you back when you drift.")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("What are you working on?")
-                    .font(.headline)
-                TextField("One task", text: $timerManager.task)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.large)
-            }
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("For how long?")
-                    .font(.headline)
-                Picker("Focus block length", selection: blockMinutes) {
-                    Text("25 min").tag(25)
-                    Text("50 min").tag(50)
-                    Text("90 min").tag(90)
+            HStack(spacing: Spacing.m) {
+                AppMark(size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Welcome to Focusly")
+                        .font(.system(size: 30, weight: .light))
+                        .foregroundStyle(Ink.primary)
+                    Text("One task. Always in view.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Brand.accent)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
             }
+            Text("A small anchor in the corner of your screen that shows the one thing you are doing, how long you have, and brings you back when you drift.")
+                .font(.system(size: 14))
+                .foregroundStyle(Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            TaskField { step = 1 }
+            DurationPicker()
         }
     }
 
     private var helpersStep: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("A few optional helpers")
-                    .font(.largeTitle.weight(.semibold))
-                Text("You can change these any time in Settings.")
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("A few helpers")
+                    .font(.system(size: 30, weight: .light))
+                    .foregroundStyle(Ink.primary)
+                Text("All optional. Change them any time in Settings.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Ink.secondary)
             }
             helperRow(
+                symbol: "bell.badge.fill",
                 title: "Notifications",
                 detail: "A gentle note when a block or break ends.",
                 done: notificationsAllowed,
                 action: ("Allow", requestNotifications)
             )
             helperRow(
+                symbol: "calendar",
                 title: "Calendar runway",
                 detail: "See how long you have until your next meeting.",
                 done: calendarManager.hasAccess,
                 action: ("Connect", calendarManager.connect)
             )
             HStack(spacing: Spacing.m) {
-                helperText(title: "Launch at login", detail: "Have the anchor ready when you sit down.")
+                helperText(symbol: "power", title: "Launch at login", detail: "Have the anchor ready when you sit down.")
                 Spacer()
                 Toggle("Launch at login", isOn: $settings.launchAtLogin)
                     .toggleStyle(.switch)
                     .labelsHidden()
+                    .tint(Brand.tide[0])
             }
         }
     }
 
-    private func helperRow(title: String, detail: String, done: Bool, action: (String, () -> Void)) -> some View {
+    private func helperRow(symbol: String, title: String, detail: String, done: Bool, action: (String, () -> Void)) -> some View {
         HStack(spacing: Spacing.m) {
-            helperText(title: title, detail: detail)
+            helperText(symbol: symbol, title: title, detail: detail)
             Spacer()
             if done {
                 Label("On", systemImage: "checkmark")
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Brand.accent)
             } else {
                 Button(action.0, action: action.1)
-                    .glassButton()
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Brand.accent)
                     .accessibilityLabel("\(action.0) \(title.lowercased())")
             }
         }
     }
 
-    private func helperText(title: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.headline)
-            Text(detail)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+    private func helperText(symbol: String, title: String, detail: String) -> some View {
+        HStack(spacing: Spacing.m) {
+            IconChip(symbol: symbol, size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Ink.tertiary)
+            }
         }
-    }
-
-    private var blockMinutes: Binding<Int> {
-        Binding(
-            get: { Int(settings.workDuration / 60) },
-            set: { settings.workDuration = TimeInterval($0 * 60) }
-        )
     }
 
     private func requestNotifications() {

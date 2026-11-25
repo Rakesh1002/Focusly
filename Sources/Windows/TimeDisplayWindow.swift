@@ -71,11 +71,11 @@ struct TimeDisplayWindow: View {
     @State private var hovering = false
 
     private static let driftGrace: TimeInterval = 120
-    private static let leadingSlot: CGFloat = 14
+    private static let leadingSlot: CGFloat = 18
 
     var body: some View {
         let drifting = isDrifting
-        let shape = RoundedRectangle(cornerRadius: Radius.m)
+        let shape = RoundedRectangle(cornerRadius: 16)
         TimelineView(.everyMinute) { context in
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 HStack(spacing: Spacing.s) {
@@ -115,7 +115,14 @@ struct TimeDisplayWindow: View {
             .padding(.vertical, Spacing.s)
             .frame(maxWidth: 300, alignment: .leading)
             .fixedSize()
+            // Glass ignores its tint in a window that never becomes key, so the graphite wash is painted over it.
+            .background(
+                LinearGradient(colors: [Color(hex: 0x1A2230), Color(hex: 0x0E131B)], startPoint: .top, endPoint: .bottom)
+                    .opacity(0.88),
+                in: shape
+            )
             .glassBackground(in: shape, interactive: true)
+            .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
             .overlay {
                 if drifting {
                     DriftBorder(shape: shape, animated: !reduceMotion)
@@ -137,17 +144,24 @@ struct TimeDisplayWindow: View {
                 if let window { WindowManager.shared.resetPosition(of: window) }
             }
         }
+        .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Open Focusly", click)
     }
 
     private var leadingSlot: some View {
         ZStack {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-                .opacity(hovering ? 0 : 1)
-                .accessibilityHidden(true)
+            Group {
+                if timerManager.isRunning {
+                    FocusRing(progress: blockProgress,
+                              mood: Mood(running: true, onBreak: timerManager.isBreakTime),
+                              lineWidth: 3, glow: false)
+                } else {
+                    Circle().fill(dotColor).frame(width: 8, height: 8)
+                }
+            }
+            .opacity(hovering ? 0 : 1)
+            .accessibilityHidden(true)
             Image(systemName: "xmark")
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(.secondary)
@@ -191,6 +205,12 @@ struct TimeDisplayWindow: View {
         } else {
             NotificationCenter.default.post(name: NSNotification.Name("OpenMainPopover"), object: window)
         }
+    }
+
+    private var blockProgress: Double {
+        let total = timerManager.isBreakTime ? settings.breakDuration : settings.workDuration
+        guard total > 0 else { return 0 }
+        return 1 - timerManager.remainingTime / total
     }
 
     private var task: String {

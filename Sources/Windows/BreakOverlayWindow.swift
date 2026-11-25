@@ -4,34 +4,42 @@ import AppKit
 struct BreakOverlayView: View {
     @EnvironmentObject var timerManager: TimerManager
 
+    private var progress: Double {
+        let total = timerManager.settings.breakDuration
+        guard total > 0 else { return 0 }
+        return 1 - timerManager.remainingTime / total
+    }
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.7)
-                .ignoresSafeArea()
-            VStack(spacing: Spacing.l) {
-                Text("Break")
-                    .font(.largeTitle.weight(.semibold))
-                Text(timerManager.remainingTime.clock)
-                    .font(.system(size: 72, weight: .semibold, design: .rounded).monospacedDigit())
+            Color(hex: 0x0B0F16)
+            ImmersiveBackground(style: .vivid, mood: .rest)
+            VStack(spacing: Spacing.xl) {
+                Text("Take a break")
+                    .font(.system(size: 44, weight: .light))
+                    .foregroundStyle(Ink.primary)
+                ZStack {
+                    FocusRing(progress: progress, mood: .rest, lineWidth: 14)
+                    Text(timerManager.remainingTime.clock)
+                        .font(.system(size: 72, weight: .light, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Ink.primary)
+                }
+                .frame(width: 280, height: 280)
                 Text("Step away from the screen. Your task will be here when you get back.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Ink.secondary)
                     .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
                 HStack(spacing: Spacing.m) {
                     Button("End session") { timerManager.stop() }
-                        .foregroundStyle(.primary)
-                        .glassButton()
+                        .buttonStyle(PanelButtonStyle(height: 44))
                     Button("Skip break") { timerManager.skipBreakStartWork() }
-                        .glassButton(prominent: true)
+                        .buttonStyle(PanelButtonStyle(kind: .cta, height: 44))
                 }
-                .controlSize(.large)
-                .glassGroup()
-                .padding(.top, Spacing.s)
+                .frame(width: 360)
             }
-            .padding(Spacing.xl * 2)
-            .frame(maxWidth: 520)
-            .glassBackground(in: RoundedRectangle(cornerRadius: Radius.l))
         }
+        .environment(\.colorScheme, .dark)
     }
 }
 
@@ -39,10 +47,11 @@ final class BreakOverlayWindow: NSWindow {
     init(screen: NSScreen, timerManager: TimerManager) {
         super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         isReleasedWhenClosed = false
-        level = .popUpMenu
-        backgroundColor = .clear
-        isOpaque = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // Above notification banners and every app, on every Space, and pinned through Mission Control.
+        level = .screenSaver
+        backgroundColor = .black
+        isOpaque = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 
         let host = NSHostingView(rootView: BreakOverlayView().environmentObject(timerManager))
         // Keep the window screen-sized; by default the hosting view would shrink it to the content.
