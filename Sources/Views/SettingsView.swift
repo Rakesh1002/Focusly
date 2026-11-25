@@ -70,7 +70,7 @@ struct SettingsView: View {
 
             Section("General") {
                 Toggle("Launch at login", isOn: $settings.launchAtLogin)
-                Link("Privacy policy", destination: URL(string: "https://focusly.unquest.ai/privacy")!)
+                Link("Privacy policy", destination: URL(string: "https://focusly.roushan.xyz/privacy")!)
                 LabeledContent("Start or stop", value: "\u{2325}\u{2318}T")
                 LabeledContent("Skip break", value: "\u{2325}\u{2318}S")
                 LabeledContent("Show or hide floating timer", value: "\u{2325}\u{2318}B")
