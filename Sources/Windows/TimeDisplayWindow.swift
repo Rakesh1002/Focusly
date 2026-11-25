@@ -94,7 +94,7 @@ struct TimeDisplayWindow: View {
                 HStack(spacing: Spacing.s) {
                     if let runway = runway(at: Date()) {
                         Text(runway.text)
-                            .foregroundStyle(runway.urgent ? Color.accentColor : .secondary)
+                            .foregroundStyle(runway.urgent ? Signal.soon : .secondary)
                             .lineLimit(1)
                     }
                     Spacer(minLength: Spacing.s)
@@ -115,12 +115,6 @@ struct TimeDisplayWindow: View {
             .padding(.vertical, Spacing.s)
             .frame(maxWidth: 300, alignment: .leading)
             .fixedSize()
-            // Glass ignores its tint in a window that never becomes key, so the graphite wash is painted over it.
-            .background(
-                LinearGradient(colors: [Color(hex: 0x1A2230), Color(hex: 0x0E131B)], startPoint: .top, endPoint: .bottom)
-                    .opacity(0.88),
-                in: shape
-            )
             .glassBackground(in: shape, interactive: true)
             .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
             .overlay {
@@ -144,7 +138,6 @@ struct TimeDisplayWindow: View {
                 if let window { WindowManager.shared.resetPosition(of: window) }
             }
         }
-        .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Open Focusly", click)
     }
@@ -153,9 +146,7 @@ struct TimeDisplayWindow: View {
         ZStack {
             Group {
                 if timerManager.isRunning {
-                    FocusRing(progress: blockProgress,
-                              mood: Mood(running: true, onBreak: timerManager.isBreakTime),
-                              lineWidth: 3, glow: false)
+                    FocusRing(progress: blockProgress, lineWidth: 2.5)
                 } else {
                     Circle().fill(dotColor).frame(width: 8, height: 8)
                 }
@@ -194,7 +185,7 @@ struct TimeDisplayWindow: View {
         } else {
             Text("\(agentWatch.name) \(state == .done ? "done" : "needs you"), click to return")
                 .fontWeight(.medium)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Ink.primary)
                 .lineLimit(1)
         }
     }
@@ -224,8 +215,7 @@ struct TimeDisplayWindow: View {
     }
 
     private var dotColor: Color {
-        if timerManager.isBreakTime { return .green }
-        return timerManager.isRunning ? .accentColor : .secondary
+        Ink.tertiary
     }
 
     // Evaluated on every body pass; while focusing the countdown re-renders the view each second.
@@ -250,7 +240,7 @@ private struct DriftBorder<S: InsettableShape>: View {
 
     var body: some View {
         shape
-            .strokeBorder(Color.accentColor, lineWidth: 2)
+            .strokeBorder(Signal.soon, lineWidth: 1.5)
             .opacity(dim ? 0.35 : 1)
             .onAppear {
                 guard animated else { return }

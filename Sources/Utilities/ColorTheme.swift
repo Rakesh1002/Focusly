@@ -65,45 +65,28 @@ extension NSWindow {
     }
 }
 
-// MARK: - Immersive surfaces (tray, floating timer, break screen, onboarding)
-// Graphite Liquid Glass with one signature "tide" accent (teal to sky) and a warm "dawn" for breaks.
+// MARK: - Minimal surfaces
+// Native glass and the system light/dark appearance; monochrome ink, one inverted primary action,
+// and colour only for warnings that matter.
 
-extension Color {
-    init(hex: UInt32, opacity: Double = 1) {
-        self.init(
-            .sRGB,
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255,
-            opacity: opacity
-        )
-    }
+enum Ink {
+    static let primary = Color.primary
+    static let secondary = Color.secondary
+    static let tertiary = Color.primary.opacity(0.4)
+    static let fill = Color.primary.opacity(0.05)
+    static let fillStrong = Color.primary.opacity(0.1)
+    static let hairline = Color.primary.opacity(0.08)
 }
 
-enum Brand {
-    static let tide = [Color(hex: 0x2EE6C5), Color(hex: 0x4FA8FF)]
-    static let dawn = [Color(hex: 0xFFB86B), Color(hex: 0xFF7E8A)]
-    static let accent = Color(hex: 0x5EEAD4)
-    static let warning = Color(hex: 0xFBBF24)
-    static let urgent = Color(hex: 0xFF7E8A)
-    static let onAccent = Color(hex: 0x05231E)
-    static let orb = [Color(hex: 0x2EE6C5), Color(hex: 0x3B9EFF), Color(hex: 0x6366F1)]
+enum Signal {
+    static let soon = Color.orange
+    static let now = Color.red
 }
 
-/// The three moods every immersive surface is tinted by.
 enum Mood {
     case ready, focus, rest
 
-    var colors: [Color] {
-        switch self {
-        case .ready, .focus: return Brand.tide
-        case .rest: return Brand.dawn
-        }
-    }
-
-    var glow: Color { colors[0] }
-
-    /// The coloured word in "Focus: Ready".
+    /// The word in "Focus: Ready".
     var word: String {
         switch self {
         case .ready: return "Ready"
@@ -117,81 +100,24 @@ enum Mood {
     }
 }
 
-enum Ink {
-    static let primary = Color.white
-    static let secondary = Color.white.opacity(0.72)
-    static let tertiary = Color.white.opacity(0.5)
-    static let fill = Color.white.opacity(0.08)
-    static let fillStrong = Color.white.opacity(0.16)
-    static let hairline = Color.white.opacity(0.12)
-}
-
-struct ImmersiveBackground: View {
-    enum Style {
-        /// The tray and floating timer: a graphite wash that lets the glass and wallpaper show through.
-        case panel
-        /// Full windows (onboarding, break screen): graphite with a teal and dawn aurora.
-        case vivid
-    }
-
-    var style: Style = .panel
-    var mood: Mood = .ready
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        GeometryReader { proxy in
-            let reach = max(proxy.size.width, proxy.size.height)
-            ZStack {
-                LinearGradient(colors: [Color(hex: 0x161B26), Color(hex: 0x0B0F16)], startPoint: .top, endPoint: .bottom)
-                    .opacity(reduceTransparency ? 1 : (style == .panel ? 0.8 : 0.9))
-                switch style {
-                case .panel:
-                    RadialGradient(colors: [mood.glow.opacity(0.2), .clear],
-                                   center: UnitPoint(x: 0.5, y: 0.2), startRadius: 0, endRadius: reach * 0.6)
-                    RadialGradient(colors: [Color(hex: 0x4FA8FF, opacity: 0.1), .clear],
-                                   center: .bottomTrailing, startRadius: 0, endRadius: reach * 0.7)
-                case .vivid:
-                    RadialGradient(colors: [Brand.tide[0].opacity(0.3), .clear],
-                                   center: .topLeading, startRadius: 0, endRadius: reach * 0.75)
-                    RadialGradient(colors: [Brand.dawn[1].opacity(mood == .rest ? 0.32 : 0.18), .clear],
-                                   center: .bottomTrailing, startRadius: 0, endRadius: reach * 0.7)
-                    RadialGradient(colors: [Color(hex: 0x6366F1, opacity: 0.14), .clear],
-                                   center: .center, startRadius: 0, endRadius: reach * 0.5)
-                }
-            }
-        }
-        .ignoresSafeArea()
-        .animation(.easeInOut(duration: 0.6), value: mood)
-    }
-}
-
 struct FocusRing: View {
     let progress: Double
-    let mood: Mood
-    var lineWidth: CGFloat = 10
-    var glow = true
+    var lineWidth: CGFloat = 6
 
     var body: some View {
-        let clamped = min(max(progress, 0.002), 1)
-        // A full ring wraps back to its first colour so there is no seam at twelve o'clock.
-        let stops = clamped >= 1 ? mood.colors + [mood.colors[0]] : mood.colors
         ZStack {
-            Circle().stroke(Color.white.opacity(0.1), lineWidth: lineWidth)
+            Circle().stroke(Ink.fillStrong, lineWidth: lineWidth)
             Circle()
-                .trim(from: 0, to: clamped)
-                .stroke(
-                    AngularGradient(colors: stops, center: .center, startAngle: .zero, endAngle: .degrees(360 * clamped)),
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                )
+                .trim(from: 0, to: min(max(progress, 0), 1))
+                .stroke(Ink.primary, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: glow ? mood.glow.opacity(0.6) : .clear, radius: lineWidth * 1.1)
         }
         .padding(lineWidth / 2)
         .accessibilityHidden(true)
     }
 }
 
-/// Rounded-rectangle buttons: the tide call to action, or a translucent secondary.
+/// Rounded-rectangle buttons: the inverted primary action, or a quiet secondary.
 struct PanelButtonStyle: ButtonStyle {
     enum Kind { case cta, secondary }
 
@@ -210,49 +136,44 @@ struct PanelButtonStyle: ButtonStyle {
         @State private var hovering = false
 
         var body: some View {
-            let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
-            configuration.label
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(kind == .cta ? Brand.onAccent : Ink.primary)
-                .frame(maxWidth: .infinity)
-                .frame(height: height)
-                .background {
-                    switch kind {
-                    case .cta:
-                        shape.fill(LinearGradient(colors: Brand.tide, startPoint: .leading, endPoint: .trailing))
-                            .brightness(hovering ? 0.05 : 0)
-                            .shadow(color: Brand.tide[0].opacity(0.3), radius: 12, y: 3)
-                    case .secondary:
-                        shape.fill(hovering ? Ink.fillStrong : Ink.fill)
-                    }
+            let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+            Group {
+                if kind == .cta {
+                    configuration.label.foregroundStyle(.background)
+                } else {
+                    configuration.label.foregroundStyle(Ink.primary)
                 }
-                .overlay { shape.strokeBorder(kind == .cta ? .clear : Ink.hairline, lineWidth: 0.75) }
-                .contentShape(shape)
-                .onHover { hovering = $0 }
-                .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
-                .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .background {
+                if kind == .cta {
+                    shape.fill(Ink.primary.opacity(hovering ? 0.85 : 1))
+                } else {
+                    shape.fill(hovering ? Ink.fillStrong : Ink.fill)
+                }
+            }
+            .overlay { shape.strokeBorder(kind == .cta ? .clear : Ink.hairline, lineWidth: 0.5) }
+            .contentShape(shape)
+            .onHover { hovering = $0 }
+            .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.35)
         }
     }
 }
 
-/// A round, haloed primary button for full-window flows.
+/// A round primary button for full-window flows.
 struct OrbButtonStyle: ButtonStyle {
-    var diameter: CGFloat = 76
+    var diameter: CGFloat = 64
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(.white)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.background)
             .frame(width: diameter, height: diameter)
-            .background {
-                Circle()
-                    .fill(LinearGradient(colors: Brand.orb, startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .overlay(Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1))
-                    .shadow(color: Brand.tide[0].opacity(0.5), radius: 18)
-                    .shadow(color: Color(hex: 0x6366F1, opacity: 0.3), radius: 30, x: 10, y: 6)
-            }
+            .background(Circle().fill(Ink.primary))
             .contentShape(Circle())
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }
 
@@ -265,15 +186,10 @@ struct SquareIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Ink.primary.opacity(hovering ? 1 : 0.85))
-                .frame(width: 32, height: 32)
-                .background(
-                    LinearGradient(colors: [Color.white.opacity(hovering ? 0.24 : 0.18), Color.white.opacity(0.08)],
-                                   startPoint: .top, endPoint: .bottom),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                )
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(hovering ? Ink.primary : Ink.secondary)
+                .frame(width: 28, height: 28)
+                .background(hovering ? Ink.fillStrong : Ink.fill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -283,7 +199,7 @@ struct SquareIconButton: View {
     }
 }
 
-/// A translucent card in the tray's grid: glyph, title, a coloured status line, and an optional cyan action.
+/// A quiet card in the tray's grid: glyph, title, a status line, and an optional text action.
 struct ActionCard: View {
     let symbol: String
     let title: String
@@ -294,17 +210,17 @@ struct ActionCard: View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Ink.primary.opacity(0.9))
-                    .frame(width: 20, height: 20)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(Ink.secondary)
+                    .frame(width: 18, height: 18)
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Ink.primary)
                         .lineLimit(1)
                     value
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 12))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -315,15 +231,14 @@ struct ActionCard: View {
                     Spacer()
                     Button(action.label, action: action.run)
                         .buttonStyle(.plain)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Brand.accent)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Ink.primary)
                 }
             }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
-        .background(Ink.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+        .frame(maxWidth: .infinity, minHeight: 78, alignment: .topLeading)
+        .background(Ink.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -334,12 +249,10 @@ struct IconChip: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size * 0.45, weight: .semibold))
-            .foregroundStyle(.white)
+            .font(.system(size: size * 0.42, weight: .medium))
+            .foregroundStyle(Ink.primary)
             .frame(width: size, height: size)
-            .background(LinearGradient(colors: Brand.tide, startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5))
+            .background(Ink.fillStrong, in: RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
             .accessibilityHidden(true)
     }
 }
@@ -349,15 +262,10 @@ struct AppMark: View {
 
     var body: some View {
         Image(systemName: "timer")
-            .font(.system(size: size * 0.52, weight: .bold))
-            .foregroundStyle(.white)
+            .font(.system(size: size * 0.5, weight: .semibold))
+            .foregroundStyle(.background)
             .frame(width: size, height: size)
-            .background(
-                LinearGradient(colors: Brand.orb, startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-            )
-            .overlay(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5))
-            .shadow(color: Brand.tide[0].opacity(0.4), radius: size * 0.3)
+            .background(Ink.primary, in: RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
             .accessibilityHidden(true)
     }
 }

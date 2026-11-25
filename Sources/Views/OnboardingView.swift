@@ -38,8 +38,6 @@ struct OnboardingView: View {
         }
         .padding(28)
         .frame(width: 480, height: 480)
-        .background(ImmersiveBackground(style: .vivid))
-        .environment(\.colorScheme, .dark)
         .onAppear(perform: refreshNotificationStatus)
     }
 
@@ -53,7 +51,7 @@ struct OnboardingView: View {
                         .foregroundStyle(Ink.primary)
                     Text("One task. Always in view.")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Brand.accent)
+                        .foregroundStyle(Ink.secondary)
                 }
             }
             Text("A small anchor in the corner of your screen that shows the one thing you are doing, how long you have, and brings you back when you drift.")
@@ -95,7 +93,6 @@ struct OnboardingView: View {
                 Toggle("Launch at login", isOn: $settings.launchAtLogin)
                     .toggleStyle(.switch)
                     .labelsHidden()
-                    .tint(Brand.tide[0])
             }
         }
     }
@@ -107,12 +104,12 @@ struct OnboardingView: View {
             if done {
                 Label("On", systemImage: "checkmark")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Brand.accent)
+                    .foregroundStyle(Ink.secondary)
             } else {
                 Button(action.0, action: action.1)
                     .buttonStyle(.plain)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Brand.accent)
+                    .foregroundStyle(Ink.secondary)
                     .accessibilityLabel("\(action.0) \(title.lowercased())")
             }
         }

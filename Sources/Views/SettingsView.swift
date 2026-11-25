@@ -78,7 +78,6 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .tint(Brand.tide[0])
         .onChange(of: settings.showFloatingTimerOnAllScreens) { _ in
             if settings.showTimeDisplay {
                 WindowManager.shared.showTimeDisplay()

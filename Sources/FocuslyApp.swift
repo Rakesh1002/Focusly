@@ -131,12 +131,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let popover = NSPopover()
         popover.behavior = .transient
-        // The tray is an always-dark immersive surface; keep the popover chrome and arrow dark to match.
-        popover.appearance = NSAppearance(named: .darkAqua)
-        if #available(macOS 14, *) {
-            // Let the violet panel run under the arrow instead of leaving a strip of system chrome.
-            popover.hasFullSizeContent = true
-        }
         popover.contentViewController = hostingController
         self.popover = popover
 
@@ -225,7 +219,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let host = NSHostingView(rootView: onboardingView)
         host.frame = NSRect(x: 0, y: 0, width: 480, height: 480)
         host.autoresizingMask = [.width, .height]
-        window.appearance = NSAppearance(named: .darkAqua)
         window.setGlassContent(host, cornerRadius: 16)
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = true

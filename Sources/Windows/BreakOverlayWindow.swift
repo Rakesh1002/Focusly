@@ -12,14 +12,13 @@ struct BreakOverlayView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: 0x0B0F16)
-            ImmersiveBackground(style: .vivid, mood: .rest)
+            Color(nsColor: .windowBackgroundColor)
             VStack(spacing: Spacing.xl) {
                 Text("Take a break")
                     .font(.system(size: 44, weight: .light))
                     .foregroundStyle(Ink.primary)
                 ZStack {
-                    FocusRing(progress: progress, mood: .rest, lineWidth: 14)
+                    FocusRing(progress: progress, lineWidth: 8)
                     Text(timerManager.remainingTime.clock)
                         .font(.system(size: 72, weight: .light, design: .rounded).monospacedDigit())
                         .foregroundStyle(Ink.primary)
@@ -39,7 +38,6 @@ struct BreakOverlayView: View {
                 .frame(width: 360)
             }
         }
-        .environment(\.colorScheme, .dark)
     }
 }
 
@@ -49,7 +47,7 @@ final class BreakOverlayWindow: NSWindow {
         isReleasedWhenClosed = false
         // Above notification banners and every app, on every Space, and pinned through Mission Control.
         level = .screenSaver
-        backgroundColor = .black
+        backgroundColor = .windowBackgroundColor
         isOpaque = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
 

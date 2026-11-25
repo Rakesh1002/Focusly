@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct MenuBarView: View {
-    @EnvironmentObject var timerManager: TimerManager
     @State private var showingSettings = false
 
     var body: some View {
@@ -24,9 +23,7 @@ struct MenuBarView: View {
                 footer
             }
         }
-        .frame(width: 360)
-        .background(ImmersiveBackground(mood: Mood(running: timerManager.isRunning, onBreak: timerManager.isBreakTime)))
-        .environment(\.colorScheme, .dark)
+        .frame(width: 340)
     }
 
     private var footer: some View {
@@ -72,23 +69,23 @@ struct NowView: View {
     private var heroCard: some View {
         VStack(spacing: Spacing.m) {
             ZStack {
-                FocusRing(progress: timerManager.isRunning ? progress : 1, mood: mood, lineWidth: 9)
+                FocusRing(progress: timerManager.isRunning ? progress : 0)
                 VStack(spacing: 2) {
                     Text(ringLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .tracking(1.4)
                         .foregroundStyle(Ink.tertiary)
                     Text((timerManager.isRunning ? timerManager.remainingTime : settings.workDuration).clock)
-                        .font(.system(size: 44, weight: .light, design: .rounded).monospacedDigit())
+                        .font(.system(size: 42, weight: .light).monospacedDigit())
                         .foregroundStyle(Ink.primary)
                 }
                 .accessibilityElement(children: .combine)
             }
-            .frame(width: 164, height: 164)
+            .frame(width: 156, height: 156)
 
             VStack(spacing: 4) {
-                (Text("Focus: ") + Text(mood.word).foregroundColor(mood == .rest ? Brand.dawn[0] : Brand.accent))
-                    .font(.system(size: 20, weight: .bold))
+                (Text("Focus: ") + Text(mood.word).foregroundColor(Ink.secondary))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                 Text(subtitle)
                     .font(.system(size: 13))
@@ -105,13 +102,8 @@ struct NowView: View {
                 idleControls
             }
         }
-        .padding(16)
+        .padding(.vertical, Spacing.s)
         .frame(maxWidth: .infinity)
-        .background(
-            LinearGradient(colors: [Color.white.opacity(0.13), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-        )
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
     }
 
     private var ringLabel: String {
@@ -149,7 +141,7 @@ struct NowView: View {
             if let warning = collisionWarning(blockLength: settings.workDuration) {
                 Label(warning, systemImage: "exclamationmark.circle")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Brand.warning)
+                    .foregroundStyle(Signal.soon)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             Button(action: start) {
@@ -180,8 +172,7 @@ struct NowView: View {
                 .onSubmit(saveNote)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(Ink.fill, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+                .background(Ink.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             HStack(spacing: Spacing.s) {
                 Button("Skip") { timerManager.awaitingNote = false }
                     .buttonStyle(PanelButtonStyle(height: 34))
@@ -202,10 +193,10 @@ struct NowView: View {
         } else if let event = calendarManager.nextEvent(after: now) {
             let startsIn = event.startDate.timeIntervalSince(now)
             ActionCard(symbol: "calendar", title: event.title,
-                       value: Text("In \(startsIn.shortDuration)").foregroundColor(startsIn < 5 * 60 ? Brand.urgent : Brand.warning))
+                       value: Text("In \(startsIn.shortDuration)").foregroundColor(startsIn < 5 * 60 ? Signal.now : Ink.secondary))
         } else {
             ActionCard(symbol: "calendar", title: "Next meeting",
-                       value: Text("Free for today").foregroundColor(Brand.accent))
+                       value: Text("Free for today").foregroundColor(Ink.secondary))
         }
     }
 
@@ -214,10 +205,10 @@ struct NowView: View {
         case .working:
             ActionCard(symbol: "sparkles", title: agentWatch.name,
                        value: (Text("Working \u{00B7} ") + Text(timerInterval: (agentWatch.since ?? Date())...Date.distantFuture, countsDown: false))
-                        .foregroundColor(Brand.accent))
+                        .foregroundColor(Ink.secondary))
         case .done, .waiting:
             ActionCard(symbol: "sparkles", title: agentWatch.name,
-                       value: Text(agentWatch.state == .done ? "Finished" : "Needs you").foregroundColor(Brand.warning),
+                       value: Text(agentWatch.state == .done ? "Finished" : "Needs you").foregroundColor(Signal.soon),
                        action: ("Return", agentWatch.returnToAgent))
         case nil:
             ActionCard(symbol: "sparkles", title: "Coding agent",
@@ -229,14 +220,14 @@ struct NowView: View {
     private var floatingTimerCard: some View {
         ActionCard(symbol: "pip", title: "Floating timer",
                    value: Text(settings.showTimeDisplay ? "Showing" : "Hidden")
-                    .foregroundColor(settings.showTimeDisplay ? Brand.accent : Ink.tertiary),
+                    .foregroundColor(Ink.secondary),
                    action: (settings.showTimeDisplay ? "Hide" : "Show", { settings.showTimeDisplay.toggle() }))
     }
 
     private var breaksCard: some View {
         ActionCard(symbol: "cup.and.saucer", title: "Breaks",
                    value: Text("\(Int(settings.breakDuration / 60)) min each")
-                    .foregroundColor(Brand.warning),
+                    .foregroundColor(Ink.secondary),
                    action: ("Adjust", openSettings))
     }
 
@@ -297,8 +288,7 @@ struct TaskField: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
-        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+        .background(Ink.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -323,8 +313,8 @@ struct DurationPicker: View {
                         .frame(height: 28)
                         .background {
                             if selected {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Ink.fillStrong)
-                                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+                                RoundedRectangle(cornerRadius: 7, style: .continuous).fill(.background)
+                                    .shadow(color: .black.opacity(0.08), radius: 1, y: 0.5)
                                     .matchedGeometryEffect(id: "pill", in: pill)
                             }
                         }
@@ -336,7 +326,6 @@ struct DurationPicker: View {
             }
         }
         .padding(3)
-        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 0.5))
+        .background(Ink.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
