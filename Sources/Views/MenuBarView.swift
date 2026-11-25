@@ -68,7 +68,8 @@ struct NowView: View {
         VStack(spacing: 10) {
             heroCard
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
-                TimelineView(.everyMinute) { context in meetingCard(now: context.date) }
+                // The timeline only schedules the refresh; reading the clock here keeps the card and the collision warning in step.
+                TimelineView(.everyMinute) { _ in meetingCard(now: Date()) }
                 agentCard
                 floatingTimerCard
                 breaksCard
