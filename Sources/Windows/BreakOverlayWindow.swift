@@ -3,112 +3,60 @@ import AppKit
 
 struct BreakOverlayView: View {
     @EnvironmentObject var timerManager: TimerManager
-    @Environment(\.dismiss) var dismiss
-    
-    private var formattedTime: String {
-        let minutes = Int(timerManager.remainingTime) / 60
-        let seconds = Int(timerManager.remainingTime) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+
+    private var progress: Double {
+        let total = timerManager.settings.breakDuration
+        guard total > 0 else { return 0 }
+        return 1 - timerManager.remainingTime / total
     }
-    
-    private var breakMessage: String {
-        let totalMinutes = Int(timerManager.remainingTime / 60)
-        let totalSeconds = Int(timerManager.remainingTime) % 60
-        
-        if totalMinutes > 0 {
-            return "Take a \(totalMinutes) minute break"
-        } else if totalSeconds > 0 {
-            return "Take a short break"
-        } else {
-            return "Break ending..."
-        }
-    }
-    
+
     var body: some View {
-        VStack(spacing: 30) {
-            Text("Break Time!")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundColor(.white)
-            
-            Text(breakMessage)
-                .font(.title2)
-                .foregroundColor(.white.opacity(0.9))
-            
-            // Countdown Timer Display
-            Text(formattedTime)
-                .font(.system(size: 72, weight: .medium, design: .rounded))
-                .foregroundColor(Color(red: 0.65, green: 0.55, blue: 1.0))
-                .monospacedDigit()
-            
-            Spacer()
-                .frame(height: 40)
-            
-            Button("Skip Break") {
-                timerManager.stop()
-                dismiss()
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            VStack(spacing: Spacing.xl) {
+                Text("Take a break")
+                    .font(.system(size: 44, weight: .light))
+                    .foregroundStyle(Ink.primary)
+                ZStack {
+                    FocusRing(progress: progress, lineWidth: 8)
+                    Text(timerManager.remainingTime.clock)
+                        .font(.system(size: 72, weight: .light, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Ink.primary)
+                }
+                .frame(width: 280, height: 280)
+                Text("Step away from the screen. Your task will be here when you get back.")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Ink.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
+                HStack(spacing: Spacing.m) {
+                    Button("End session") { timerManager.stop() }
+                        .buttonStyle(PanelButtonStyle(height: 44))
+                    Button("Skip break") { timerManager.skipBreakStartWork() }
+                        .buttonStyle(PanelButtonStyle(kind: .cta, height: 44))
+                }
+                .frame(width: 360)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(Color(red: 0.65, green: 0.55, blue: 1.0))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.85))
     }
 }
 
-class BreakOverlayWindowController: NSWindowController {
-    private var timerManager: TimerManager?
-    
-    convenience init(timerManager: TimerManager) {
-        let window = NSWindow(
-            contentRect: NSScreen.main?.frame ?? .zero,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        
-        // Use popUpMenu level so it appears above normal windows but below floating timer (.floating)
-        window.level = .popUpMenu
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = false
-        window.ignoresMouseEvents = false
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        
-        self.init(window: window)
-        self.timerManager = timerManager
-        
-        // Set up the SwiftUI content view
-        let contentView = BreakOverlayView()
-            .environmentObject(timerManager)
-        window.contentView = NSHostingView(rootView: contentView)
-        
-        NSLog("🔔 BreakOverlayWindow: Initialized with content view")
+final class BreakOverlayWindow: NSWindow {
+    init(screen: NSScreen, timerManager: TimerManager) {
+        super.init(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        isReleasedWhenClosed = false
+        // Above notification banners and every app, on every Space, and pinned through Mission Control.
+        level = .screenSaver
+        backgroundColor = .windowBackgroundColor
+        isOpaque = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+
+        let host = NSHostingView(rootView: BreakOverlayView().environmentObject(timerManager))
+        // Keep the window screen-sized; by default the hosting view would shrink it to the content.
+        host.sizingOptions = []
+        contentView = host
+        setFrame(screen.frame, display: false)
     }
-    
-    func show() {
-        NSLog("🔔 BreakOverlayWindow: show() called")
-        
-        // Make window visible on all screens
-        guard let mainScreen = NSScreen.main else {
-            NSLog("⚠️ BreakOverlayWindow: No main screen found")
-            return
-        }
-        
-        window?.setFrame(mainScreen.frame, display: true)
-        window?.makeKeyAndOrderFront(nil)
-        window?.orderFrontRegardless()
-        
-        NSLog("🔔 BreakOverlayWindow: Window shown on main screen - frame: \(mainScreen.frame)")
-        
-        // Also cover other screens if multiple monitors
-        if NSScreen.screens.count > 1 {
-            NSLog("🔔 BreakOverlayWindow: Multiple screens detected: \(NSScreen.screens.count)")
-        }
-    }
-    
-    func hide() {
-        NSLog("🔔 BreakOverlayWindow: hide() called")
-        window?.orderOut(nil)
-    }
+
+    override var canBecomeKey: Bool { true }
 }

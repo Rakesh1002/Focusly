@@ -2,480 +2,173 @@ import SwiftUI
 
 struct OnboardingView: View {
     @EnvironmentObject var settings: Settings
+    @EnvironmentObject var timerManager: TimerManager
     @EnvironmentObject var calendarManager: CalendarManager
-    @Binding var isPresented: Bool
-    
-    @State private var currentPage = 0
-    @State private var isAnimating = false
-    
-    let totalPages = 5
-    
+    /// Called with `true` when the user chose to start a focus block right away.
+    let onFinish: (Bool) -> Void
+
+    @State private var step = 0
+    @State private var notificationsAllowed = false
+
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                colors: [
-                    Color(red: 0.15, green: 0.1, blue: 0.35),
-                    Color(red: 0.1, green: 0.05, blue: 0.25)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Skip button
+        VStack(alignment: .leading, spacing: Spacing.l) {
+            if step == 0 {
+                taskStep
+            } else {
+                helpersStep
+            }
+            Spacer(minLength: 0)
+            ZStack {
                 HStack {
-                    Spacer()
-                    Button(action: finishOnboarding) {
-                        Text("Skip")
-                            .foregroundStyle(.white.opacity(0.7))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                    Button(step == 0 ? "Skip" : "Back") {
+                        if step == 0 { onFinish(false) } else { step = 0 }
                     }
                     .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    Spacer()
                 }
-                .padding()
-                
-                Spacer()
-                
-                // Page content - Manual page switching for macOS
-                Group {
-                    if currentPage == 0 {
-                        WelcomePage()
-                    } else if currentPage == 1 {
-                        FeaturePage(
-                            icon: "timer.circle.fill",
-                            title: "Focus Sessions",
-                            description: "Stay productive with timed work sessions and automatic breaks",
-                            features: [
-                                "Customizable work/break durations",
-                                "Floating timer display",
-                                "Keyboard shortcuts for quick control"
-                            ]
-                        )
-                    } else if currentPage == 2 {
-                        FeaturePage(
-                            icon: "calendar.badge.clock",
-                            title: "Calendar Integration",
-                            description: "Smart scheduling around your meetings",
-                            features: [
-                                "See upcoming meetings",
-                                "Auto-pause for meetings",
-                                "Find optimal focus time slots"
-                            ],
-                            action: {
-                                if !calendarManager.hasAccess {
-                                    calendarManager.requestCalendarAccess()
-                                }
-                            },
-                            actionLabel: calendarManager.hasAccess ? "Calendar Connected ✓" : "Connect Calendar"
-                        )
-                    } else if currentPage == 3 {
-                        SettingsPage(settings: settings)
-                    } else if currentPage == 4 {
-                        FinalPage(onGetStarted: finishOnboarding)
-                    }
+                Button(step == 0 ? "Next" : "Start") {
+                    if step == 0 { step = 1 } else { onFinish(true) }
                 }
-                .frame(maxHeight: 600)
-                .transition(.opacity)
-                
-                Spacer()
-                
-                // Page indicator and navigation
-                VStack(spacing: 20) {
-                    // Custom page dots
-                    HStack(spacing: 12) {
-                        ForEach(0..<totalPages, id: \.self) { index in
-                            Circle()
-                                .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                                .frame(width: currentPage == index ? 10 : 8, height: currentPage == index ? 10 : 8)
-                                .animation(.spring(), value: currentPage)
-                        }
-                    }
-                    
-                    // Navigation buttons
-                    HStack(spacing: 16) {
-                        if currentPage > 0 {
-                            Button(action: { withAnimation { currentPage -= 1 } }) {
-                                Text("Back")
-                                    .frame(width: 120)
-                                    .padding(.vertical, 12)
-                                    .background(Color.white.opacity(0.1))
-                                    .cornerRadius(8)
-                                    .foregroundStyle(.white)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            if currentPage < totalPages - 1 {
-                                withAnimation { currentPage += 1 }
-                            } else {
-                                finishOnboarding()
-                            }
-                        }) {
-                            Text(currentPage == totalPages - 1 ? "Get Started" : "Next")
-                                .fontWeight(.semibold)
-                                .frame(width: 120)
-                                .padding(.vertical, 12)
-                                .background(
-                                    LinearGradient(
-                                        colors: [Color.blue, Color.purple],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .cornerRadius(8)
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .frame(maxWidth: 400)
-                }
-                .padding(.bottom, 30)
+                .buttonStyle(OrbButtonStyle())
+                // On step 0 the task field's own Return advances; both handling it would skip the helpers step.
+                .keyboardShortcut(step == 1 ? .defaultAction : nil)
             }
         }
-        .frame(width: 600, height: 700)
+        .padding(28)
+        .frame(width: 480, height: 480)
+        .onAppear(perform: refreshNotificationStatus)
     }
-    
-    private func finishOnboarding() {
-        print("🎉 OnboardingView: finishOnboarding called")
-        UserDefaults.app.set(true, forKey: "hasCompletedOnboarding")
-        UserDefaults.app.set(Date(), forKey: "onboardingCompletedDate")
-        
-        print("🎉 OnboardingView: Setting isPresented to false")
-        // Use DispatchQueue to ensure binding fires properly
-        DispatchQueue.main.async {
-            self.isPresented = false
-            print("🎉 OnboardingView: isPresented set to false")
-        }
-    }
-}
 
-// MARK: - Welcome Page
-
-struct WelcomePage: View {
-    var body: some View {
-        VStack(spacing: 30) {
-            // App icon or logo
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 120, height: 120)
-                
-                Image(systemName: "timer.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.blue, Color.purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            
-            VStack(spacing: 12) {
-                Text("Welcome to Focusly")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(.white)
-                
-                Text("Your productivity companion")
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            
-            Text("Take control of your focus time with smart breaks,\ncalendar integration, and beautiful design.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.white.opacity(0.6))
-                .padding(.horizontal, 40)
-                .padding(.top, 20)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Feature Page
-
-struct FeaturePage: View {
-    let icon: String
-    let title: String
-    let description: String
-    let features: [String]
-    var action: (() -> Void)? = nil
-    var actionLabel: String? = nil
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            Image(systemName: icon)
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.blue, Color.purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            VStack(spacing: 12) {
-                Text(title)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.white)
-                
-                Text(description)
-                    .font(.body)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-            
-            VStack(alignment: .leading, spacing: 16) {
-                ForEach(features, id: \.self) { feature in
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                        Text(feature)
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
+    private var taskStep: some View {
+        VStack(alignment: .leading, spacing: Spacing.l) {
+            HStack(spacing: Spacing.m) {
+                AppMark(size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Welcome to Focusly")
+                        .font(.system(size: 30, weight: .light))
+                        .foregroundStyle(Ink.primary)
+                    Text("One task. Always in view.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Ink.secondary)
                 }
             }
-            .padding(.top, 20)
-            
-            if let action = action, let actionLabel = actionLabel {
-                Button(action: action) {
-                    Text(actionLabel)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: 300)
-                        .padding(.vertical, 12)
-                        .background(Color.white.opacity(0.15))
-                        .cornerRadius(8)
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 20)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 40)
-    }
-}
-
-// MARK: - Settings Page
-
-struct SettingsPage: View {
-    @ObservedObject var settings: Settings
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.blue, Color.purple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
-            VStack(spacing: 12) {
-                Text("Customize Your Experience")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.white)
-                
-                Text("Set your preferences for optimal productivity")
-                    .font(.body)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-            }
-            
-            // Scrollable settings to prevent clipping
-            ScrollView {
-                VStack(spacing: 12) {
-                    // All items same width for consistency
-                    Toggle(isOn: $settings.showTimeDisplay) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "eye.fill")
-                                .foregroundStyle(.blue)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Floating Timer Display")
-                                    .foregroundStyle(.white.opacity(0.9))
-                            }
-                            Spacer()
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(8)
-                    .frame(height: 48)
-                    
-                    Toggle(isOn: $settings.breakNotifications) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "bell.fill")
-                                .foregroundStyle(.blue)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Break Notifications")
-                                    .foregroundStyle(.white.opacity(0.9))
-                            }
-                            Spacer()
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(8)
-                    .frame(height: 48)
-                    
-                    // Launch at Login - User Consent
-                    Toggle(isOn: $settings.launchAtLogin) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "power")
-                                .foregroundStyle(.green)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Launch at Login")
-                                    .foregroundStyle(.white.opacity(0.9))
-                                
-                                if settings.launchAtLogin {
-                                    Text("May require approval in System Settings")
-                                        .font(.caption2)
-                                        .foregroundStyle(.white.opacity(0.5))
-                                }
-                            }
-                            Spacer()
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(8)
-                    .frame(minHeight: 48)
-                }
-                .frame(maxWidth: 400)
-            }
-            .frame(maxHeight: 300)
-            
-            VStack(spacing: 8) {
-                Text("Default: 50 min focus, 10 min break")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
-                
-                Text("Customize durations in Settings after setup")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 40)
-        .padding(.vertical, 20)
-    }
-}
-
-struct QuickSettingRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundStyle(.blue)
-                .frame(width: 24)
-            Text(title)
-                .foregroundStyle(.white.opacity(0.9))
-            Spacer()
-            Text(value)
-                .foregroundStyle(.white.opacity(0.6))
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(8)
-    }
-}
-
-// MARK: - Final Page
-
-struct FinalPage: View {
-    let onGetStarted: () -> Void
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.green.opacity(0.3), Color.blue.opacity(0.3)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 120, height: 120)
-                
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.green)
-            }
-            
-            VStack(spacing: 12) {
-                Text("You're All Set!")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(.white)
-                
-                Text("Ready to boost your productivity")
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            
-            VStack(alignment: .leading, spacing: 20) {
-                TipRow(
-                    icon: "command",
-                    text: "Use ⌘⌥T to start/stop timer anytime"
-                )
-                
-                TipRow(
-                    icon: "menubar.rectangle",
-                    text: "Access Focusly from the menu bar"
-                )
-                
-                TipRow(
-                    icon: "gearshape",
-                    text: "Customize anytime in Settings"
-                )
-            }
-            .padding(.top, 20)
-            .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-struct TipRow: View {
-    let icon: String
-    let text: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(.blue)
-                .frame(width: 24)
-            Text(text)
-                .foregroundStyle(.white.opacity(0.8))
+            Text("A small anchor in the corner of your screen that shows the one thing you are doing, how long you have, and brings you back when you drift.")
+                .font(.system(size: 14))
+                .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            TaskField { step = 1 }
+            DurationPicker()
+            anchorPreview
+        }
+    }
+
+    private var anchorPreview: some View {
+        let task = timerManager.task.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        return VStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
+                FocusRing(progress: 0.3, lineWidth: 2.5)
+                    .frame(width: 16, height: 16)
+                Text(task.isEmpty ? "Your one task" : task)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(task.isEmpty ? Ink.secondary : Ink.primary)
+                    .lineLimit(1)
+                Spacer(minLength: Spacing.s)
+                Text(settings.workDuration.clock)
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(width: 280)
+            .glassBackground(in: shape)
+            .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
+            Text("Your floating timer, always in view")
+                .font(.system(size: 11))
+                .foregroundStyle(Ink.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, Spacing.s)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Preview of the floating timer")
+    }
+
+    private var helpersStep: some View {
+        VStack(alignment: .leading, spacing: Spacing.l) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("A few helpers")
+                    .font(.system(size: 30, weight: .light))
+                    .foregroundStyle(Ink.primary)
+                Text("All optional. Change them any time in Settings.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Ink.secondary)
+            }
+            helperRow(
+                symbol: "bell.badge.fill",
+                title: "Notifications",
+                detail: "A gentle note when a block or break ends.",
+                done: notificationsAllowed,
+                action: ("Allow", requestNotifications)
+            )
+            helperRow(
+                symbol: "calendar",
+                title: "Calendar runway",
+                detail: "See how long you have until your next meeting.",
+                done: calendarManager.hasAccess,
+                action: ("Connect", calendarManager.connect)
+            )
+            HStack(spacing: Spacing.m) {
+                helperText(symbol: "power", title: "Launch at login", detail: "Have the anchor ready when you sit down.")
+                Spacer()
+                Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+        }
+    }
+
+    private func helperRow(symbol: String, title: String, detail: String, done: Bool, action: (String, () -> Void)) -> some View {
+        HStack(spacing: Spacing.m) {
+            helperText(symbol: symbol, title: title, detail: detail)
+            Spacer()
+            if done {
+                Label("On", systemImage: "checkmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+            } else {
+                Button(action.0, action: action.1)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Ink.secondary)
+                    .accessibilityLabel("\(action.0) \(title.lowercased())")
+            }
+        }
+    }
+
+    private func helperText(symbol: String, title: String, detail: String) -> some View {
+        HStack(spacing: Spacing.m) {
+            IconChip(symbol: symbol, size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Ink.secondary)
+            }
+        }
+    }
+
+    private func requestNotifications() {
+        Notifier.requestAuthorization { granted in
+            DispatchQueue.main.async { notificationsAllowed = granted }
+        }
+    }
+
+    private func refreshNotificationStatus() {
+        Notifier.isAuthorized { allowed in
+            DispatchQueue.main.async { notificationsAllowed = allowed }
         }
     }
 }
-

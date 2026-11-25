@@ -1,7 +1,6 @@
-import AVFoundation
 import AppKit
 
-enum SoundType: String, CaseIterable, Codable {
+enum SoundType: String {
     case none = "None"
     case workComplete = "Work Complete (Hero)"
     case breakTime = "Break Time (Glass)"
@@ -35,23 +34,14 @@ class SoundManager: ObservableObject {
         didSet { saveSettings() }
     }
     
-    @Published var workCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
-    
-    @Published var breakCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
-    
-    @Published var sessionCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
+    // Chosen in an earlier version's per-event pickers; still honoured, no longer editable.
+    private let workCompleteSound: SoundType
+    private let breakCompleteSound: SoundType
     
     @Published var volume: Float {
         didSet { saveSettings() }
     }
     
-    private var audioPlayer: AVAudioPlayer?
     private let defaults = UserDefaults.app
     
     init() {
@@ -75,13 +65,6 @@ class SoundManager: ObservableObject {
         } else {
             self.breakCompleteSound = .breakTime
         }
-        
-        if let sessionSoundRaw = defaults.string(forKey: "sessionCompleteSound"),
-           let sessionSound = SoundType(rawValue: sessionSoundRaw) {
-            self.sessionCompleteSound = sessionSound
-        } else {
-            self.sessionCompleteSound = .celebration
-        }
     }
     
     // MARK: - Play Sounds
@@ -96,9 +79,10 @@ class SoundManager: ObservableObject {
         playSound(breakCompleteSound)
     }
     
-    func playSessionCompleteSound() {
-        guard isEnabled else { return }
-        playSound(sessionCompleteSound)
+    /// A drifting user hears the agent even with sounds off; the notification alone is easy to miss in a chat app.
+    func playAgentSound(evenIfMuted: Bool) {
+        guard isEnabled || evenIfMuted else { return }
+        playSound(.notification)
     }
     
     private func playSound(_ soundType: SoundType) {
@@ -112,20 +96,11 @@ class SoundManager: ObservableObject {
         }
     }
     
-    // MARK: - Preview Sound
-    
-    func previewSound(_ soundType: SoundType) {
-        playSound(soundType)
-    }
-    
     // MARK: - Persistence
     
     private func saveSettings() {
         defaults.set(isEnabled, forKey: "soundEnabled")
         defaults.set(volume, forKey: "soundVolume")
-        defaults.set(workCompleteSound.rawValue, forKey: "workCompleteSound")
-        defaults.set(breakCompleteSound.rawValue, forKey: "breakCompleteSound")
-        defaults.set(sessionCompleteSound.rawValue, forKey: "sessionCompleteSound")
     }
 }
 

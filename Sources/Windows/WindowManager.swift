@@ -1,16 +1,29 @@
 import SwiftUI
 import AppKit
 
+extension NSScreen {
+    var displayID: CGDirectDisplayID {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
+    }
+
+    /// Stable across reconnects and reboots, unlike `displayID`.
+    var displayUUID: String? {
+        guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, uuid) as String
+    }
+}
+
 class WindowManager {
     static let shared = WindowManager()
-    private var timeDisplayWindows: [NSWindow] = []
-    private var breakOverlayController: BreakOverlayWindowController?
-    private var timerManager: TimerManager?
+    private var timeDisplayWindows: [CGDirectDisplayID: TimeOverlayWindow] = [:]
+    private var breakWindows: [CGDirectDisplayID: BreakOverlayWindow] = [:]
     private var settings: Settings?
-    private var isShowingWindows = false  // Prevent concurrent calls
-    
+    private var timerManager: TimerManager?
+    private var calendarManager: CalendarManager?
+    private var focusMonitor: FocusMonitor?
+    private var agentWatch: AgentWatch?
+
     private init() {
-        // Listen for screen configuration changes
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screensDidChange),
@@ -18,155 +31,150 @@ class WindowManager {
             object: nil
         )
     }
-    
-    func setSettings(_ settings: Settings) {
+
+    func configure(settings: Settings, timerManager: TimerManager, calendarManager: CalendarManager,
+                   focusMonitor: FocusMonitor, agentWatch: AgentWatch) {
+        self.agentWatch = agentWatch
         self.settings = settings
+        self.timerManager = timerManager
+        self.calendarManager = calendarManager
+        self.focusMonitor = focusMonitor
     }
-    
+
     @objc private func screensDidChange() {
-        // Refresh windows when screen configuration changes
-        if !timeDisplayWindows.isEmpty {
-            hideTimeDisplay()
+        if settings?.showTimeDisplay == true {
             showTimeDisplay()
         }
+        // A reconfiguration can briefly report no screens and close every overlay, so ask the timer, not breakWindows.
+        if timerManager?.isBreakTime == true, settings?.showBreakOverlay == true {
+            showBreakOverlay()
+        }
     }
-    
+
+    static func reconcile(
+        existing: Set<CGDirectDisplayID>,
+        targets: [CGDirectDisplayID]
+    ) -> (close: Set<CGDirectDisplayID>, create: [CGDirectDisplayID]) {
+        (existing.subtracting(targets), targets.filter { !existing.contains($0) })
+    }
+
+    /// Origin that keeps `rect` fully inside `bounds`, moving it as little as possible.
+    static func clamp(_ rect: NSRect, into bounds: NSRect) -> NSPoint {
+        NSPoint(
+            x: min(max(rect.minX, bounds.minX), bounds.maxX - rect.width),
+            y: min(max(rect.minY, bounds.minY), bounds.maxY - rect.height)
+        )
+    }
+
     func showTimeDisplay() {
-        NSLog("📞 WindowManager: showTimeDisplay() called, current thread: \(Thread.isMainThread ? "main" : "background")")
-        
-        // Ensure we're on main thread
         guard Thread.isMainThread else {
-            NSLog("⚡ WindowManager: Dispatching to main thread")
-            DispatchQueue.main.async { [weak self] in
-                self?.showTimeDisplay()
+            DispatchQueue.main.async { [weak self] in self?.showTimeDisplay() }
+            return
+        }
+        let screens = settings?.showFloatingTimerOnAllScreens == true
+            ? NSScreen.screens
+            : Array(NSScreen.screens.prefix(1))
+        let screensByID = Dictionary(screens.map { ($0.displayID, $0) }, uniquingKeysWith: { first, _ in first })
+        let diff = Self.reconcile(existing: Set(timeDisplayWindows.keys), targets: screens.map(\.displayID))
+
+        for id in diff.close {
+            timeDisplayWindows.removeValue(forKey: id)?.close()
+        }
+        for id in diff.create {
+            guard let screen = screensByID[id] else { continue }
+            let window = TimeOverlayWindow(displayID: id)
+            guard let content = makeAnchorView(for: window) else { continue }
+            window.contentView = content
+            window.onMoved = { [weak self] in self?.savePosition(of: $0) }
+            place(window, on: screen)
+            timeDisplayWindows[id] = window
+        }
+        for (id, window) in timeDisplayWindows {
+            if let screen = screensByID[id] {
+                window.setFrameOrigin(Self.clamp(window.frame, into: screen.frame))
             }
-            return
-        }
-        
-        // Prevent concurrent calls
-        guard !isShowingWindows else {
-            NSLog("⚠️ WindowManager: Already showing windows, skipping")
-            return
-        }
-        
-        isShowingWindows = true
-        defer { 
-            isShowingWindows = false
-            NSLog("🔓 WindowManager: isShowingWindows flag reset")
-        }
-        
-        NSLog("🖥️ WindowManager: Showing floating timer windows")
-        NSLog("   Settings showTimeDisplay: \(settings?.showTimeDisplay ?? false)")
-        NSLog("   Settings showOnAllScreens: \(settings?.showFloatingTimerOnAllScreens ?? false)")
-        
-        // If windows already exist, simply bring them to front and refresh content
-        if !timeDisplayWindows.isEmpty {
-            NSLog("🔁 WindowManager: Reusing \(timeDisplayWindows.count) existing window(s)")
-            for window in timeDisplayWindows {
-                if let manager = timerManager {
-                    updateTimeDisplayView(window: window, manager: manager)
-                }
-                window.orderFrontRegardless()
-            }
-            NSLog("✅ WindowManager: Reused existing windows")
-            return
-        }
-        
-        let screens = settings?.showFloatingTimerOnAllScreens == true ? NSScreen.screens : [NSScreen.main].compactMap { $0 }
-        
-        guard !screens.isEmpty else {
-            NSLog("❌ WindowManager: No screens available!")
-            return
-        }
-        
-        NSLog("📱 WindowManager: Creating windows for \(screens.count) screen(s)")
-        
-        for screen in screens {
-            NSLog("   Creating window for: \(screen.localizedName)")
-            let window = TimeOverlayWindow(screen: screen)
-            
-            if let manager = timerManager {
-                updateTimeDisplayView(window: window, manager: manager)
-            } else {
-                NSLog("   ⚠️ No timer manager available")
-            }
-            
-            // Ensure window is visible and at the correct level
             window.orderFrontRegardless()
-            
-            timeDisplayWindows.append(window)
-            NSLog("   ✅ Window created and ordered front")
         }
-        
-        NSLog("✅ WindowManager: \(timeDisplayWindows.count) windows active")
     }
-    
+
     func hideTimeDisplay() {
-        NSLog("📞 WindowManager: hideTimeDisplay() called, current thread: \(Thread.isMainThread ? "main" : "background")")
-        
-        // Ensure we're on main thread
         guard Thread.isMainThread else {
-            NSLog("⚡ WindowManager: Dispatching hide to main thread")
-            DispatchQueue.main.async { [weak self] in
-                self?.hideTimeDisplay()
-            }
+            DispatchQueue.main.async { [weak self] in self?.hideTimeDisplay() }
             return
         }
-        
-        NSLog("🚫 WindowManager: Hiding \(timeDisplayWindows.count) floating timer window(s)")
-        
-        guard !timeDisplayWindows.isEmpty else {
-            NSLog("   ℹ️ No windows to hide")
-            return
-        }
-        
-        // Just order out windows; keep them alive to avoid deallocation races
-        for (index, window) in timeDisplayWindows.enumerated() {
-            NSLog("   👻 Ordering out window \(index + 1)/\(timeDisplayWindows.count)")
-            window.orderOut(nil)
-        }
-        
-        NSLog("✅ WindowManager: All windows ordered out (hidden)")
+        timeDisplayWindows.values.forEach { $0.orderOut(nil) }
     }
-    
-    func setTimerManager(_ manager: TimerManager) {
-        self.timerManager = manager
-        
-        for window in timeDisplayWindows {
-            updateTimeDisplayView(window: window, manager: manager)
+
+    // Saved per display as the anchor's top-right corner relative to that screen's frame: the anchor grows leftwards.
+    private static let positionsKey = "anchorPositions"
+
+    private func place(_ window: TimeOverlayWindow, on screen: NSScreen) {
+        let frame = screen.frame
+        var topRight = NSPoint(x: screen.visibleFrame.maxX - 20, y: screen.visibleFrame.maxY - 20)
+        if let uuid = screen.displayUUID,
+           let saved = UserDefaults.app.dictionary(forKey: Self.positionsKey)?[uuid] as? [Double], saved.count == 2 {
+            topRight = NSPoint(x: frame.minX + saved[0], y: frame.minY + saved[1])
         }
+        let target = NSRect(x: topRight.x - window.frame.width, y: topRight.y - window.frame.height,
+                            width: window.frame.width, height: window.frame.height)
+        window.setFrameOrigin(Self.clamp(target, into: frame))
     }
-    
-    private func updateTimeDisplayView(window: NSWindow, manager: TimerManager) {
-        let timeDisplayView = TimeDisplayWindow()
-            .environmentObject(manager)
-        window.contentView = NSHostingView(rootView: timeDisplayView)
+
+    private func savePosition(of window: TimeOverlayWindow) {
+        guard let screen = NSScreen.screens.first(where: { $0.displayID == window.displayID }),
+              let uuid = screen.displayUUID else { return }
+        var positions = UserDefaults.app.dictionary(forKey: Self.positionsKey) ?? [:]
+        positions[uuid] = [window.frame.maxX - screen.frame.minX, window.frame.maxY - screen.frame.minY]
+        UserDefaults.app.set(positions, forKey: Self.positionsKey)
     }
-    
+
+    func resetPosition(of window: TimeOverlayWindow) {
+        guard let screen = NSScreen.screens.first(where: { $0.displayID == window.displayID }) else { return }
+        if let uuid = screen.displayUUID, var positions = UserDefaults.app.dictionary(forKey: Self.positionsKey) {
+            positions[uuid] = nil
+            UserDefaults.app.set(positions, forKey: Self.positionsKey)
+        }
+        place(window, on: screen)
+    }
+
+    private func makeAnchorView(for window: TimeOverlayWindow) -> NSView? {
+        guard let settings, let timerManager, let calendarManager, let focusMonitor, let agentWatch else { return nil }
+        return NSHostingView(rootView: TimeDisplayWindow(window: window)
+            .environmentObject(settings)
+            .environmentObject(timerManager)
+            .environmentObject(calendarManager)
+            .environmentObject(focusMonitor)
+            .environmentObject(agentWatch))
+    }
+
     func showBreakOverlay() {
-        NSLog("🔔 WindowManager: showBreakOverlay() called")
-        
-        guard let timerManager = timerManager else {
-            NSLog("⚠️ WindowManager: Cannot show break overlay - timerManager is nil")
-            return
+        guard let timerManager else { return }
+        let screensByID = Dictionary(NSScreen.screens.map { ($0.displayID, $0) }, uniquingKeysWith: { first, _ in first })
+        let diff = Self.reconcile(existing: Set(breakWindows.keys), targets: NSScreen.screens.map(\.displayID))
+
+        for id in diff.close {
+            breakWindows.removeValue(forKey: id)?.close()
         }
-        
-        if breakOverlayController == nil {
-            NSLog("🔔 WindowManager: Creating new break overlay controller")
-            breakOverlayController = BreakOverlayWindowController(timerManager: timerManager)
+        for id in diff.create {
+            guard let screen = screensByID[id] else { continue }
+            breakWindows[id] = BreakOverlayWindow(screen: screen, timerManager: timerManager)
         }
-        
-        NSLog("🔔 WindowManager: Calling show() on break overlay")
-        breakOverlayController?.show()
+        for (id, window) in breakWindows {
+            if let screen = screensByID[id] {
+                window.setFrame(screen.frame, display: true)
+            }
+            window.orderFrontRegardless()
+        }
+        // Take the keyboard so the break buttons answer the first click and key press, not an activation click.
+        NSApp.activate(ignoringOtherApps: true)
+        breakWindows[NSScreen.screens.first?.displayID ?? 0]?.makeKey()
     }
-    
+
     func hideBreakOverlay() {
-        NSLog("🔔 WindowManager: hideBreakOverlay() called")
-        breakOverlayController?.hide()
-        breakOverlayController?.close()
-        breakOverlayController = nil
+        breakWindows.values.forEach { $0.close() }
+        breakWindows.removeAll()
     }
-    
+
     func cleanup() {
         hideTimeDisplay()
         hideBreakOverlay()

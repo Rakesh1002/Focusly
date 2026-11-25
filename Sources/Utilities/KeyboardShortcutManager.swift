@@ -49,10 +49,6 @@ class KeyboardShortcutManager {
                 toggleTimer()
                 return nil
                 
-            case "r", "R": // ⌘⌥R - Reset timer
-                resetTimer()
-                return nil
-                
             case "s", "S": // ⌘⌥S - Skip break
                 skipBreak()
                 return nil
@@ -60,9 +56,6 @@ class KeyboardShortcutManager {
             case "b", "B": // ⌘⌥B - Toggle time display
                 toggleTimeDisplay()
                 return nil
-                
-            case ",": // ⌘⌥, - Open settings (already handled by system)
-                break
                 
             default:
                 break
@@ -107,8 +100,6 @@ class KeyboardShortcutManager {
         var ok = true
         // ⌘⌥T
         ok = register(UInt32(kVK_ANSI_T), mods, 1) && ok
-        // ⌘⌥R
-        ok = register(UInt32(kVK_ANSI_R), mods, 2) && ok
         // ⌘⌥S
         ok = register(UInt32(kVK_ANSI_S), mods, 3) && ok
         // ⌘⌥B
@@ -120,7 +111,6 @@ class KeyboardShortcutManager {
     private func handleHotKeyID(_ id: UInt32) {
         switch id {
         case 1: toggleTimer()
-        case 2: resetTimer()
         case 3: skipBreak()
         case 4: toggleTimeDisplay()
         default: break
@@ -137,13 +127,6 @@ class KeyboardShortcutManager {
         } else {
             timerManager.start()
         }
-    }
-    
-    private func resetTimer() {
-        guard let timerManager = timerManager else { return }
-        
-        timerManager.stop()
-        // Timer will reset automatically when stopped
     }
     
     private func skipBreak() {
