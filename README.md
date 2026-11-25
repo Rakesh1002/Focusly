@@ -1,374 +1,99 @@
-# 🎯 Focusly - Premium Pomodoro Timer for macOS
+<p align="center">
+  <img src="https://focusly.roushan.xyz/images/v2/focusly-icon.png" width="128" height="128" alt="Focusly icon">
+</p>
+
+<h1 align="center">Focusly</h1>
 
 <p align="center">
-  <img src="AppIcon.svg" alt="Focusly" width="200"/>
+  A calm floating focus timer for your Mac. It keeps the one thing you're working on in view, shows how long you have until your next meeting, and brings you back when your coding agent is done.
 </p>
 
 <p align="center">
-  <strong>A beautiful, feature-rich Pomodoro timer with smart calendar integration, task management, and productivity analytics</strong>
+  <a href="https://go2.gg/focusly">Mac App Store</a> ·
+  <a href="https://go2.gg/focusly-download">Download</a> ·
+  <a href="https://go2.gg/focusly-site">Website</a> ·
+  <a href="https://go2.gg/focusly-press">Press kit</a>
 </p>
 
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-usage">Usage</a> •
-  <a href="#️-building-from-source">Building</a>
-</p>
+![The Focusly floating timer above your work](https://focusly.roushan.xyz/press/focusly-1-hero.jpg)
 
----
+## Install
 
-## 🌟 Features
+- **Mac App Store:** [go2.gg/focusly](https://go2.gg/focusly)
+- **Direct download:** [go2.gg/focusly-download](https://go2.gg/focusly-download), a notarised DMG
+- **Homebrew:**
 
-### Core Timer Functionality
+  ```sh
+  brew tap rakesh1002/tap && brew trust rakesh1002/tap && brew install --cask focusly
+  ```
 
-- 🕒 **Customizable Pomodoro Timer** - Adjust work/break durations (1-120 minutes)
-- 🎯 **Multiple Timer Presets** - Quick access to different work modes (Deep Focus, Quick Tasks, Creative Work)
-- 🔄 **Automatic Break Management** - Smart transitions between work and break periods
-- 📊 **Cycle Tracking** - Monitor your progress through multiple Pomodoro cycles
-- ⏸️ **Skip Break Option** - Resume work immediately when needed
+Focusly needs macOS 13 or later on a Mac with Apple silicon.
 
-### Smart Calendar Integration
+## What it does
 
-- 📅 **macOS Calendar Sync** - Real-time integration with your native calendar
-- ⚠️ **Meeting Conflict Warnings** - Get notified before starting a Pomodoro that conflicts with a meeting
-- 🗓️ **Optimal Focus Time Suggestions** - AI suggests best times for deep work based on your schedule
-- 🔔 **Smart Notifications** - Context-aware alerts that respect your availability
+- **Floating timer.** Your task, the countdown and the time of day in one small glass pill above your other windows. Drag it anywhere; every display remembers where you put it. Hide it with ⌥⌘B without quitting.
+- **Your next meeting.** With read-only calendar access, Focusly shows how long you have until your next meeting and warns you before a block runs into one.
+- **Breaks that happen.** A calm full-screen break on every display when a block ends. The next block waits until you start it.
+- **Pick up where you left off.** Leave yourself one line after each block. Focusly shows it when you come back.
+- **Coding agent hand-off.** Claude Code, Codex and Cursor tell Focusly when a run starts, finishes or needs you. One click takes you back to your terminal.
+- **Keyboard first.** ⌥⌘T starts or stops a block, ⌥⌘S skips a break, ⌥⌘B shows or hides the floating timer.
+- **Private.** No account, no analytics and no network connections. Everything stays on your Mac.
 
-### Comprehensive Task Management
+![A coding agent finishing its run](https://focusly.roushan.xyz/press/focusly-3-agent.jpg)
 
-- ✅ **Full Task CRUD** - Create, read, update, and delete tasks seamlessly
-- 🎨 **Priority Levels** - Four priority levels (Low, Medium, High, Urgent) with visual indicators
-- 📈 **Pomodoro Estimation** - Estimate and track Pomodoros per task
-- 🏷️ **Task Tagging System** - Organize with custom tags
-- 📅 **Due Date Management** - Set deadlines with overdue notifications
-- 🎯 **Smart Task Suggestions** - AI recommends what to work on next
-- 📝 **Task Notes** - Add detailed notes to any task
-- 📊 **Progress Tracking** - Visual progress indicators for each task
+## Coding agent hand-off
 
-### Advanced Statistics & Analytics
+Agents talk to Focusly through its URL scheme:
 
-- 📈 **Detailed Statistics Dashboard** - Daily, weekly, and monthly analytics
-- 🔥 **Streak Tracking** - Monitor consecutive days of productivity
-- ⏱️ **Total Focus Time** - Track cumulative focused work hours
-- 📊 **Productivity Heatmaps** - Visual representation of your focus patterns
-- 💾 **Export Data** - Export statistics as CSV or JSON
-- 🏆 **Achievement System** - Unlock achievements for productivity milestones
-
-### Session Management
-
-- 📝 **Session Journaling** - Add notes after completing focus sessions
-- 🏷️ **Session Tagging** - Tag and categorize your work sessions
-- 🔍 **Session Search & History** - Review and analyze past sessions
-- 📊 **Session Analytics** - Understand which tasks take longest
-
-### Break Time Features
-
-- ☕ **Smart Break Activities** - Curated suggestions for effective breaks
-- 👀 **Eye Care Reminders** - 20-20-20 rule implementation
-- 🧘 **Stretch Prompts** - Gentle reminders to move and stretch
-- 💧 **Hydration Reminders** - Stay healthy during long work sessions
-- 🎨 **Full-Screen Break Overlay** - Optional immersive break experience
-
-### User Interface & Experience
-
-- 🎨 **Beautiful Modern Design** - Glass morphism effects and smooth animations
-- 🌙 **Native Dark Mode** - Optimized for macOS appearance
-- 📱 **Floating Timer Window** - Draggable, always-on-top timer display
-- 🖥️ **Multi-Screen Support** - Display on all monitors or just one
-- ⌨️ **Global Keyboard Shortcuts** - Control timer without opening the app
-- 🎵 **Customizable Sounds** - Multiple notification sounds with volume control
-- 🚀 **Minimal Menu Bar Presence** - No dock icon, clean menu bar integration
-- 🔔 **macOS Notifications** - Native notification support
-
-### Productivity Tools
-
-- 🎯 **Timer Presets** - Save custom work/break configurations
-- 📊 **Real-time Progress** - Live updates on current task progress
-- 🔔 **Context-Aware Notifications** - Different notifications for work/break/session completion
-- 🎨 **Dynamic Status Bar Icon** - Icon changes based on timer state
-- 🚀 **Launch at Login** - Start automatically when Mac boots
-- 💾 **Automatic Data Backup** - Local data persistence
-- 📤 **Import/Export** - Backup and restore your data
-
-### Privacy & Security
-
-- 🔒 **100% Private** - All data stored locally
-- 🚫 **No Tracking** - Zero analytics or telemetry
-- 💾 **Local Storage** - No cloud, no accounts required
-- 🔐 **Calendar Privacy** - Calendar data never leaves your device
-- ⚡ **Offline First** - Works completely offline
-
----
-
-## 💻 Installation
-
-### Mac App Store (Coming Soon)
-
-1. Open the Mac App Store
-2. Search for "Focusly"
-3. Click "Get" or purchase ($7.99)
-4. Launch from menu bar icon
-
-### Direct Download
-
-1. Download the latest `.dmg` from [Releases](https://github.com/rakesh1002/Focusly/releases/latest)
-2. Open the `.dmg` file
-3. Drag Focusly to Applications folder
-4. Launch from Applications or menu bar
-
-### System Requirements
-
-- **macOS**: 13.0 (Ventura) or later
-- **Processor**: Apple Silicon (M1/M2/M3/M4) or Intel
-- **Memory**: 100 MB RAM
-- **Storage**: 50 MB free disk space
-- **Optional**: Calendar access for meeting integration features
-
-### First Launch
-
-1. Look for the timer icon in your menu bar (top-right)
-2. Click the icon to open Focusly
-3. Grant calendar access when prompted (optional but recommended)
-4. Start your first focus session!
-
-> **For Developers**: See [Building from Source](#️-building-from-source) below to compile and run from code.
-
----
-
-## 🎮 Usage
-
-### Quick Start
-
-1. **Launch Focusly** - Click the timer icon in your menu bar
-2. **Start Timer** - Click "Start" for a default 50-minute focus session
-3. **Create Tasks** - Navigate to Tasks tab to add what you're working on
-4. **Track Progress** - View Statistics tab for productivity insights
-
-### Essential Workflows
-
-#### Starting a Focus Session
-
-```
-1. Click menu bar icon
-2. Optional: Select a task from Tasks tab
-3. Optional: Choose a timer preset
-4. Click "Start"
-5. Focus! The app will notify you when it's break time
+```sh
+open -g "focusly://agent?state=working&name=Claude&project=api&app=com.apple.Terminal"
 ```
 
-#### Managing Tasks
+`state` is `working`, `waiting` or `done`. `app` is the bundle ID of the app to return to, which the hooks below fill in from `__CFBundleIdentifier`. The same snippets are in the app under Settings, then Coding agent hand-off, with a Copy button and Send a test.
 
-```
-1. Click Tasks tab
-2. Click "+" to add new task
-3. Set priority, due date, and estimated Pomodoros
-4. Start timer with task selected
-5. Task automatically tracks completed Pomodoros
-```
+**Claude Code**, in `~/.claude/settings.json`:
 
-#### Customizing Timer
-
-```
-1. Click Settings gear icon
-2. Adjust work duration (1-120 min)
-3. Adjust break duration (1-60 min)
-4. Set number of cycles (1-10)
-5. Or create custom presets in Presets tab
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
+    "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }]
+  }
+}
 ```
 
-### Keyboard Shortcuts
+**Codex**, at the top of `~/.codex/config.toml`, above any `[section]`:
 
-Global shortcuts work even when the app isn't focused:
+```toml
+notify = ["bash", "-lc", "open -g \"focusly://agent?state=done&name=Codex&project=${PWD##*/}&app=${__CFBundleIdentifier}\""]
+```
 
-| Shortcut | Action                       | Description                                 |
-| -------- | ---------------------------- | ------------------------------------------- |
-| `⌘⌥T`    | Start/Stop Timer             | Toggle between running and paused states    |
-| `⌘⌥R`    | Reset Timer                  | Stop and reset the current timer            |
-| `⌘⌥S`    | Skip Break                   | End break early and start next work session |
-| `⌘⌥B`    | Toggle Floating Timer Window | Show/hide the always-on-top timer display   |
-| `⌘,`     | Open Settings                | Standard macOS shortcut to open preferences |
+**Cursor**, in `~/.cursor/hooks.json`:
 
-> **Note**: These use Command+Option (⌘⌥), not Command+Shift, to avoid conflicts with system shortcuts.
+```json
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [{ "command": "open -g \"focusly://agent?state=working&name=Cursor&app=${__CFBundleIdentifier}\"" }],
+    "stop": [{ "command": "open -g \"focusly://agent?state=done&name=Cursor&app=${__CFBundleIdentifier}\"" }]
+  }
+}
+```
 
-### Pro Tips
+## Build from source
 
-1. **Enable Calendar Integration** - Grant calendar access for meeting warnings
-2. **Create Custom Presets** - Save different timer configs for different work types
-3. **Use Task Tags** - Organize work by project or context
-4. **Review Statistics** - Check weekly stats every Sunday to plan your week
-5. **Set Realistic Estimates** - Start with 1-2 Pomodoros per task until you calibrate
+Focusly is a Swift package with no third-party dependencies.
 
----
-
-## 🛠️ Building from Source
-
-### Prerequisites
-
-- macOS 13.0 or later
-- Xcode 14.0 or later
-- Swift 5.9 or later
-- Command Line Tools installed
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/rakesh1002/Focusly.git
-cd Focusly
-
-# Build and run
-./Scripts/build_and_run.sh
-
-# Or use Swift Package Manager directly
+```sh
 swift build
-swift run
-```
-
-### Project Structure
-
-```
-Focusly/
-├── Sources/
-│   ├── FocuslyApp.swift          # Main app entry point
-│   ├── Models/                    # Data models and managers
-│   │   ├── TimerManager.swift     # Core timer logic
-│   │   ├── TaskManager.swift      # Task management
-│   │   ├── StatisticsManager.swift # Analytics
-│   │   ├── CalendarManager.swift  # Calendar integration
-│   │   ├── SessionJournal.swift   # Session notes
-│   │   ├── NotificationManager.swift # Notifications
-│   │   ├── SoundManager.swift     # Audio handling
-│   │   ├── BreakActivities.swift  # Break suggestions
-│   │   ├── TimerPreset.swift      # Custom presets
-│   │   ├── AppSetup.swift        # First launch setup
-│   │   ├── AppCleanup.swift      # Resource cleanup
-│   │   └── Settings.swift         # User preferences
-│   ├── Views/                     # SwiftUI views
-│   │   ├── MenuBarView.swift      # Main menu interface
-│   │   ├── TasksView.swift        # Task management UI
-│   │   ├── StatisticsView.swift   # Analytics dashboard
-│   │   ├── SettingsView.swift     # Preferences UI
-│   │   ├── CalendarView.swift     # Calendar integration
-│   │   ├── JournalView.swift      # Session journaling
-│   │   ├── PresetsView.swift      # Timer presets
-│   │   ├── BreakActivitiesView.swift # Break activities
-│   │   └── AboutView.swift        # About window
-│   ├── Windows/                   # Custom windows
-│   │   ├── TimeDisplayWindow.swift # Floating timer
-│   │   ├── BreakOverlayWindow.swift # Break screen
-│   │   └── WindowManager.swift    # Window management
-│   └── Utilities/                 # Helper classes
-│       ├── ColorTheme.swift       # Color system
-│       ├── GlassStyle.swift       # Glass morphism
-│       ├── KeyboardShortcutManager.swift # Global shortcuts
-│       ├── PermissionManager.swift # System permissions
-│       └── AppUserDefaults.swift  # Persistent storage
-├── Tests/                        # Unit tests
-├── Package.swift                 # Swift Package Manager config
-├── Focusly.entitlements         # App entitlements
-├── AppIcon.svg                   # App icon source
-└── README.md                     # This file
-```
-
-### Running Tests
-
-```bash
 swift test
-
-# With coverage
-swift test --enable-code-coverage
 ```
 
----
+## Support
 
-## 🚀 Feature Roadmap
+Email support@focusly.roushan.xyz or [open an issue](../../issues).
 
-### v1.1 (Next Release)
+## License
 
-- [ ] Menu bar timer display
-- [ ] Quick task creation from main view
-- [ ] Export tasks as Markdown
-- [ ] Custom notification sounds
-- [ ] Statistics comparison view
-
-### v1.2
-
-- [ ] Focus Mode integration
-- [ ] Desktop widgets
-- [ ] Sound library (ambient sounds)
-- [ ] Advanced filtering in tasks
-- [ ] Dark/Light theme customization
-
-### v1.3
-
-- [ ] Cloud sync (optional paid feature)
-- [ ] Collaboration features
-- [ ] Apple Watch companion
-- [ ] Shortcuts integration
-
-### v2.0
-
-- [ ] AI task prioritization
-- [ ] Mobile companions
-- [ ] Team features
-- [ ] Advanced automation
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Development Guidelines
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/AmazingFeature`)
-3. **Follow Swift style guide** (SwiftLint configured)
-4. **Write tests** for new features
-5. **Update documentation** as needed
-6. **Commit your changes** (`git commit -m 'Add some AmazingFeature'`)
-7. **Push to the branch** (`git push origin feature/AmazingFeature`)
-8. **Open a Pull Request**
-
-### Code Style
-
-- Follow Apple's Swift API Design Guidelines
-- Use meaningful variable and function names
-- Comment complex logic
-- Keep functions focused and small
-- Write unit tests for business logic
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
-
-## 🙏 Acknowledgments
-
-- **Design Inspiration**: Apple's Human Interface Guidelines
-- **Pomodoro Technique**: Francesco Cirillo
-- **Icons**: SF Symbols by Apple
-- **Community**: Thanks to all beta testers and contributors
-- **Libraries**: Built with native SwiftUI and AppKit
-
----
-
-## 📞 Support & Contact
-
-- **Email**: support@focusly.roushan.xyz
-- **Website**: https://focusly.roushan.xyz
-- **Twitter**: @FocuslyApp
-- **GitHub Issues**: [Report bugs and request features](https://github.com/rakesh1002/Focusly/issues)
-
----
-
-<p align="center">
-  <strong>Built with ❤️ by Rakesh</strong>
-  <br>
-  <sub>Focus better. Work smarter. Achieve more.</sub>
-</p>
-
-<p align="center">
-  <a href="https://buymeacoffee.com/buildwithrakesh">☕ Buy me a coffee</a>
-</p>
+MIT. Made by Roushan, Inc.
