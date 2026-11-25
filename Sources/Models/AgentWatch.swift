@@ -13,6 +13,7 @@ final class AgentWatch: ObservableObject {
         let state: State
         let name: String
         let project: String
+        var app: String? = nil
     }
 
     static let notificationID = "agent"
@@ -26,6 +27,7 @@ final class AgentWatch: ObservableObject {
     weak var focusMonitor: FocusMonitor?
     private var origin: NSRunningApplication?
     private var activationObserver: NSObjectProtocol?
+    private var workingExpiry: DispatchWorkItem?
 
     init() {
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -50,10 +52,15 @@ final class AgentWatch: ObservableObject {
         guard url.scheme == "focusly", url.host == "agent",
               let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
               let state = items.first(where: { $0.name == "state" })?.value.flatMap(State.init) else { return nil }
+        // Any app or website can open focusly:// URLs: drop control and bidi characters that could spoof the anchor text.
         func value(_ key: String) -> String? {
-            items.first(where: { $0.name == key })?.value.flatMap { $0.isEmpty ? nil : $0 }
+            guard let raw = items.first(where: { $0.name == key })?.value else { return nil }
+            let clean = String(String(raw.unicodeScalars.filter {
+                ![.control, .format].contains($0.properties.generalCategory)
+            }).prefix(60))
+            return clean.isEmpty ? nil : clean
         }
-        return Event(state: state, name: value("name") ?? "Agent", project: value("project") ?? "")
+        return Event(state: state, name: value("name") ?? "Agent", project: value("project") ?? "", app: value("app"))
     }
 
     func handle(url: URL) {
@@ -64,13 +71,25 @@ final class AgentWatch: ObservableObject {
     func apply(_ event: Event, frontmost: NSRunningApplication?) {
         name = event.name
         project = event.project
+        // Hooks pass the bundle ID of the app they run in; Codex only sends `done`, so this is its only way back.
+        let hookApp = event.app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
+        if let hookApp {
+            origin = hookApp
+        }
+        workingExpiry?.cancel()
         if event.state == .working {
-            // The hook fires from the app the user typed the prompt in; Focusly itself is never the way back.
-            if let frontmost, frontmost.bundleIdentifier != Bundle.main.bundleIdentifier {
+            // Without a hook-supplied app, the prompt was typed in the frontmost app; Focusly itself is never the way back.
+            if hookApp == nil, let frontmost, frontmost.bundleIdentifier != Bundle.main.bundleIdentifier {
                 origin = frontmost
             }
             state = .working
             since = Date()
+            // shortcut: an interrupted agent (Esc in Claude Code) sends no Stop, so "working" expires; `done` still alerts later.
+            let expiry = DispatchWorkItem { [weak self] in
+                if self?.state == .working { self?.clear() }
+            }
+            workingExpiry = expiry
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30 * 60, execute: expiry)
             return
         }
 

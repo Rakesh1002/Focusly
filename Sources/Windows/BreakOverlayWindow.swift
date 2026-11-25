@@ -6,19 +6,20 @@ struct BreakOverlayView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.45)
+            Color.black.opacity(0.7)
                 .ignoresSafeArea()
             VStack(spacing: Spacing.l) {
                 Text("Break")
                     .font(.largeTitle.weight(.semibold))
                 Text(timerManager.remainingTime.clock)
-                    .font(.timer)
+                    .font(.system(size: 72, weight: .semibold, design: .rounded).monospacedDigit())
                 Text("Step away from the screen. Your task will be here when you get back.")
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 HStack(spacing: Spacing.m) {
                     Button("End session") { timerManager.stop() }
+                        .foregroundStyle(.primary)
                         .glassButton()
                     Button("Skip break") { timerManager.skipBreakStartWork() }
                         .glassButton(prominent: true)

@@ -136,5 +136,8 @@ class TimerManager: ObservableObject {
 
     deinit {
         timer?.invalidate()
+        if let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+        }
     }
 }

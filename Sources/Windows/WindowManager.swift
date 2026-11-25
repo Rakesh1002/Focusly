@@ -45,7 +45,8 @@ class WindowManager {
         if settings?.showTimeDisplay == true {
             showTimeDisplay()
         }
-        if !breakWindows.isEmpty {
+        // A reconfiguration can briefly report no screens and close every overlay, so ask the timer, not breakWindows.
+        if timerManager?.isBreakTime == true, settings?.showBreakOverlay == true {
             showBreakOverlay()
         }
     }

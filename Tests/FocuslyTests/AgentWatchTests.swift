@@ -48,6 +48,21 @@ final class AgentWatchTests: XCTestCase {
         XCTAssertEqual(posted, [])
     }
 
+    func testStripsBidiAndControlCharactersAndCapsLength() {
+        let spoof = AgentWatch.parse(URL(string: "focusly://agent?state=done&name=%E2%80%AEevil%0A")!)
+        XCTAssertEqual(spoof?.name, "evil")
+        let long = AgentWatch.parse(URL(string: "focusly://agent?state=done&project=\(String(repeating: "a", count: 500))")!)
+        XCTAssertEqual(long?.project.count, 60)
+    }
+
+    func testHookSuppliedAppIsTheWayBackWithoutAWorkingEvent() throws {
+        let dock = try XCTUnwrap(NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier == "com.apple.dock" })
+        let watch = AgentWatch()
+        watch.apply(AgentWatch.Event(state: .done, name: "Codex", project: "", app: "com.apple.dock"), frontmost: dock)
+        XCTAssertNil(watch.state)
+        XCTAssertEqual(posted, [])
+    }
+
     func testCopiedHookSnippetsAreValidJSON() throws {
         for snippet in [AgentHooks.claudeCode, AgentHooks.cursor] {
             XCTAssertNoThrow(try JSONSerialization.jsonObject(with: Data(snippet.utf8)))

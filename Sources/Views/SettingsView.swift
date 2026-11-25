@@ -55,7 +55,7 @@ struct SettingsView: View {
                 Button("Copy Claude Code hooks") { copy(AgentHooks.claudeCode) }
                     .help("Paste into ~/.claude/settings.json or a project's .claude/settings.json")
                 Button("Copy Codex notify line") { copy(AgentHooks.codex) }
-                    .help("Paste into ~/.codex/config.toml")
+                    .help("Paste at the top of ~/.codex/config.toml, above any [section]")
                 Button("Copy Cursor hooks") { copy(AgentHooks.cursor) }
                     .help("Paste into ~/.cursor/hooks.json")
                 Button("Send a test") {
@@ -109,21 +109,21 @@ enum AgentHooks {
     static let claudeCode = #"""
     {
       "hooks": {
-        "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }],
-        "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }],
-        "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}\"" }] }]
+        "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
+        "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
+        "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }]
       }
     }
     """#
 
-    static let codex = #"notify = ["bash", "-lc", "open -g 'focusly://agent?state=done&name=Codex'"]"#
+    static let codex = #"notify = ["bash", "-lc", "open -g \"focusly://agent?state=done&name=Codex&project=${PWD##*/}&app=${__CFBundleIdentifier}\""]"#
 
     static let cursor = #"""
     {
       "version": 1,
       "hooks": {
-        "beforeSubmitPrompt": [{ "command": "open -g 'focusly://agent?state=working&name=Cursor'" }],
-        "stop": [{ "command": "open -g 'focusly://agent?state=done&name=Cursor'" }]
+        "beforeSubmitPrompt": [{ "command": "open -g \"focusly://agent?state=working&name=Cursor&app=${__CFBundleIdentifier}\"" }],
+        "stop": [{ "command": "open -g \"focusly://agent?state=done&name=Cursor&app=${__CFBundleIdentifier}\"" }]
       }
     }
     """#
