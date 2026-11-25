@@ -312,9 +312,7 @@ struct MenuBarView: View {
             }
         }
         .onChange(of: settings.showFloatingTimerOnAllScreens) { _ in
-            // Refresh floating timer windows when multi-screen setting changes
             if settings.showTimeDisplay {
-                WindowManager.shared.hideTimeDisplay()
                 WindowManager.shared.showTimeDisplay()
             }
         }
