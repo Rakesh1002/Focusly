@@ -12,10 +12,6 @@ class Settings: ObservableObject {
         didSet { saveSettings() }
     }
     
-    @Published var maxCycles: Int {
-        didSet { saveSettings() }
-    }
-    
     @Published var showTimeDisplay: Bool {
         didSet {
             NSLog("⚙️ Settings: showTimeDisplay changed to \(showTimeDisplay), isInitialized: \(isInitialized)")
@@ -50,14 +46,6 @@ class Settings: ObservableObject {
         didSet { saveSettings() }
     }
     
-    @Published var sessionCompleteNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var showBreakActivities: Bool {
-        didSet { saveSettings() }
-    }
-    
     @Published var launchAtLogin: Bool {
         didSet {
             setLaunchAtLogin(launchAtLogin)
@@ -69,64 +57,23 @@ class Settings: ObservableObject {
         didSet { saveSettings() }
     }
     
-    // Notification Settings
-    @Published var taskDueNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var taskOverdueNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var calendarReminders: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var calendarReminderMinutes: Int {
-        didSet { saveSettings() }
-    }
-    
-    @Published var dailySummaryNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var weeklySummaryNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
-    @Published var achievementNotifications: Bool {
-        didSet { saveSettings() }
-    }
-    
     private let defaults = UserDefaults.app
     
     init() {
         // Default to 50 minutes work duration
         self.workDuration = defaults.double(forKey: "workDuration").nonZero ?? 50 * 60
         self.breakDuration = defaults.double(forKey: "breakDuration").nonZero ?? 10 * 60
-        self.maxCycles = defaults.integer(forKey: "maxCycles").nonZero ?? 4
         
         // All display and notification features enabled by default
         self.showTimeDisplay = defaults.object(forKey: "showTimeDisplay") as? Bool ?? true
         self.showBreakOverlay = defaults.object(forKey: "showBreakOverlay") as? Bool ?? true
         self.breakNotifications = defaults.object(forKey: "breakNotifications") as? Bool ?? true
-        self.sessionCompleteNotifications = defaults.object(forKey: "sessionCompleteNotifications") as? Bool ?? true
-        self.showBreakActivities = defaults.object(forKey: "showBreakActivities") as? Bool ?? true
         
         // Launch at login - default to false (user must explicitly enable per App Store guidelines)
         self.launchAtLogin = defaults.object(forKey: "launchAtLogin") as? Bool ?? false
         
         // Show floating timer on all screens - default to true for better visibility
         self.showFloatingTimerOnAllScreens = defaults.object(forKey: "showFloatingTimerOnAllScreens") as? Bool ?? true
-        
-        // Notification settings - default to enabled for better user experience
-        self.taskDueNotifications = defaults.object(forKey: "taskDueNotifications") as? Bool ?? true
-        self.taskOverdueNotifications = defaults.object(forKey: "taskOverdueNotifications") as? Bool ?? true
-        self.calendarReminders = defaults.object(forKey: "calendarReminders") as? Bool ?? true
-        self.calendarReminderMinutes = defaults.object(forKey: "calendarReminderMinutes") as? Int ?? 15
-        self.dailySummaryNotifications = defaults.object(forKey: "dailySummaryNotifications") as? Bool ?? true
-        self.weeklySummaryNotifications = defaults.object(forKey: "weeklySummaryNotifications") as? Bool ?? true
-        self.achievementNotifications = defaults.object(forKey: "achievementNotifications") as? Bool ?? true
         
         // Only auto-register if user previously enabled it
         // Do NOT auto-enable on first launch (App Store guideline 2.4.5(iii))
@@ -145,23 +92,11 @@ class Settings: ObservableObject {
     func saveSettings() {
         defaults.set(workDuration, forKey: "workDuration")
         defaults.set(breakDuration, forKey: "breakDuration")
-        defaults.set(maxCycles, forKey: "maxCycles")
         defaults.set(showTimeDisplay, forKey: "showTimeDisplay")
         defaults.set(showBreakOverlay, forKey: "showBreakOverlay")
         defaults.set(breakNotifications, forKey: "breakNotifications")
-        defaults.set(sessionCompleteNotifications, forKey: "sessionCompleteNotifications")
-        defaults.set(showBreakActivities, forKey: "showBreakActivities")
         defaults.set(launchAtLogin, forKey: "launchAtLogin")
         defaults.set(showFloatingTimerOnAllScreens, forKey: "showFloatingTimerOnAllScreens")
-        
-        // Save notification settings
-        defaults.set(taskDueNotifications, forKey: "taskDueNotifications")
-        defaults.set(taskOverdueNotifications, forKey: "taskOverdueNotifications")
-        defaults.set(calendarReminders, forKey: "calendarReminders")
-        defaults.set(calendarReminderMinutes, forKey: "calendarReminderMinutes")
-        defaults.set(dailySummaryNotifications, forKey: "dailySummaryNotifications")
-        defaults.set(weeklySummaryNotifications, forKey: "weeklySummaryNotifications")
-        defaults.set(achievementNotifications, forKey: "achievementNotifications")
     }
     
     // MARK: - Launch at Login
@@ -217,12 +152,6 @@ class Settings: ObservableObject {
             // Fallback for older macOS versions
             print("⚠️ Launch at login requires macOS 13.0 or later")
         }
-    }
-}
-
-extension Int {
-    var nonZero: Int? {
-        return self == 0 ? nil : self
     }
 }
 

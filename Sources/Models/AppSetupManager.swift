@@ -51,9 +51,6 @@ class AppSetupManager {
         defaults.set(currentVersion, forKey: "lastAppVersion")
         defaults.set(currentBuildNumber, forKey: "lastBuildNumber")
         
-        // Set default preferences for new users
-        setupDefaultPreferences()
-        
         print("✅ First launch setup complete")
     }
     
@@ -109,60 +106,5 @@ class AppSetupManager {
             defaults.set(10 * 60, forKey: "breakDuration") // 10 minutes default
             print("⚠️ Reset invalid break duration to default")
         }
-        
-        // Max cycles must be positive
-        let maxCycles = defaults.integer(forKey: "maxCycles")
-        if maxCycles <= 0 {
-            defaults.set(4, forKey: "maxCycles")
-            print("⚠️ Reset invalid max cycles to default")
-        }
-    }
-    
-    // MARK: - Default Preferences
-    
-    /// Set up default preferences for new users
-    private func setupDefaultPreferences() {
-        // These are already handled in Settings.swift init,
-        // but we can set additional first-run specific values here
-        
-        // Example: Show welcome tips on first run
-        defaults.set(true, forKey: "showWelcomeTips")
-        
-        print("📝 Default preferences configured")
-    }
-    
-    // MARK: - Data Persistence Info
-    
-    /// Get info about current data storage
-    func getDataPersistenceInfo() -> [String: Any] {
-        return [
-            "suiteName": "unquest.focusly",
-            "persistsAcrossUpdates": true,
-            "persistsAcrossUninstall": false,
-            "currentVersion": currentVersion,
-            "currentBuild": currentBuildNumber,
-            "firstLaunchDate": defaults.object(forKey: "firstLaunchDate") as? Date ?? "Never",
-            "lastUpdateDate": defaults.object(forKey: "lastUpdateDate") as? Date ?? "Never",
-            "hasCompletedOnboarding": defaults.bool(forKey: "hasCompletedOnboarding")
-        ]
-    }
-    
-    // MARK: - Debug / Testing
-    
-    /// Reset onboarding (for testing)
-    func resetOnboarding() {
-        defaults.removeObject(forKey: "hasCompletedOnboarding")
-        defaults.removeObject(forKey: "onboardingCompletedDate")
-        defaults.removeObject(forKey: "onboardedAppVersion")
-        print("🔄 Onboarding reset - will show on next launch")
-    }
-    
-    /// Reset all app data (for testing)
-    func resetAllData() {
-        let domain = "unquest.focusly"
-        defaults.removePersistentDomain(forName: domain)
-        defaults.synchronize()
-        print("🗑️ All app data reset")
     }
 }
-

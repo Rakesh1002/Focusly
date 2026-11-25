@@ -43,17 +43,6 @@ struct SettingsView: View {
                                    in: 1...60)
                                 .labelsHidden()
                         }
-                        
-                        HStack {
-                            Text("Work Cycles:")
-                            Spacer()
-                            Text("\(settings.maxCycles) cycles")
-                                .foregroundStyle(.white.opacity(0.9))
-                            Stepper("", 
-                                   value: $settings.maxCycles,
-                                   in: 1...10)
-                                .labelsHidden()
-                        }
                     }
                     
                     Section("Display") {
@@ -69,8 +58,6 @@ struct SettingsView: View {
                         }
                         
                         Toggle("Show Break Overlay", isOn: $settings.showBreakOverlay)
-                            .frame(maxWidth: .infinity)
-                        Toggle("Show Break Activities", isOn: $settings.showBreakActivities)
                             .frame(maxWidth: .infinity)
                     }
                     
@@ -103,22 +90,11 @@ struct SettingsView: View {
                             .onChange(of: soundManager.breakCompleteSound) { newValue in
                                 soundManager.previewSound(newValue)
                             }
-                            
-                            Picker("Session Complete:", selection: $soundManager.sessionCompleteSound) {
-                                ForEach(SoundType.allCases, id: \.self) { sound in
-                                    Text(sound.rawValue).tag(sound)
-                                }
-                            }
-                            .onChange(of: soundManager.sessionCompleteSound) { newValue in
-                                soundManager.previewSound(newValue)
-                            }
                         }
                     }
                     
                     Section("Notifications") {
                         Toggle("Break Notifications", isOn: $settings.breakNotifications)
-                            .frame(maxWidth: .infinity)
-                        Toggle("Session Complete Notifications", isOn: $settings.sessionCompleteNotifications)
                             .frame(maxWidth: .infinity)
                     }
                     
@@ -159,7 +135,6 @@ struct SettingsView: View {
                     Section("Keyboard Shortcuts") {
                         VStack(alignment: .leading, spacing: 8) {
                             ShortcutRow(key: "⌘⌥T", action: "Start/Stop Timer")
-                            ShortcutRow(key: "⌘⌥R", action: "Reset Timer")
                             ShortcutRow(key: "⌘⌥S", action: "Skip Break")
                             ShortcutRow(key: "⌘⌥B", action: "Toggle Time Display")
                         }

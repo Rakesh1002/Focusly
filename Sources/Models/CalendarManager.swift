@@ -13,19 +13,6 @@ struct CalendarEvent: Identifiable {
     var duration: TimeInterval {
         endDate.timeIntervalSince(startDate)
     }
-    
-    var isInProgress: Bool {
-        let now = Date()
-        return now >= startDate && now <= endDate
-    }
-    
-    var startsWithin: TimeInterval? {
-        let now = Date()
-        if startDate > now {
-            return startDate.timeIntervalSince(now)
-        }
-        return nil
-    }
 }
 
 class CalendarManager: ObservableObject {
@@ -241,41 +228,6 @@ class CalendarManager: ObservableObject {
         }
     }
     
-    // MARK: - Focus Time Suggestions
-    
-    func suggestFocusBlocks(duration: TimeInterval = 3600) -> [Date] {
-        guard hasAccess else { return [] }
-        
-        var suggestions: [Date] = []
-        let now = Date()
-        let calendar = Calendar.current
-        let endOfDay = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now) ?? now
-        
-        var currentTime = now
-        
-        while currentTime < endOfDay && suggestions.count < 5 {
-            let proposedEnd = currentTime.addingTimeInterval(duration)
-            
-            // Check if this time slot is free
-            let hasConflict = upcomingEvents.contains { event in
-                !event.isAllDay &&
-                ((event.startDate >= currentTime && event.startDate < proposedEnd) ||
-                 (event.endDate > currentTime && event.endDate <= proposedEnd) ||
-                 (event.startDate <= currentTime && event.endDate >= proposedEnd))
-            }
-            
-            if !hasConflict {
-                suggestions.append(currentTime)
-                currentTime = proposedEnd
-            } else {
-                // Move to next 30-minute slot
-                currentTime = calendar.date(byAdding: .minute, value: 30, to: currentTime) ?? currentTime
-            }
-        }
-        
-        return suggestions
-    }
-    
     func timeUntilNextMeeting() -> TimeInterval? {
         guard let next = nextMeeting else { return nil }
         return next.startDate.timeIntervalSinceNow
@@ -287,44 +239,4 @@ class CalendarManager: ObservableObject {
         }
         return timeUntilMeeting >= duration + 300 // 5 minutes buffer
     }
-    
-    // MARK: - Smart Scheduling
-    
-    func shouldPauseFocus() -> Bool {
-        // Check if a meeting is starting in the next 5 minutes
-        if let next = nextMeeting,
-           let startsIn = next.startsWithin,
-           startsIn <= 300 {
-            return true
-        }
-        
-        // Check if we're currently in a meeting (excluding all-day events)
-        return upcomingEvents.contains { event in
-            !event.isAllDay && event.isInProgress
-        }
-    }
-    
-    func getNextAvailableTime() -> Date? {
-        let now = Date()
-        
-        // Find the next gap after current/upcoming meetings
-        for event in upcomingEvents {
-            if event.endDate > now {
-                // Check if there's a gap after this event
-                let nextEventAfter = upcomingEvents.first { $0.startDate >= event.endDate }
-                
-                if let nextEvent = nextEventAfter {
-                    let gap = nextEvent.startDate.timeIntervalSince(event.endDate)
-                    if gap >= 1800 { // At least 30 minutes gap
-                        return event.endDate
-                    }
-                } else {
-                    return event.endDate
-                }
-            }
-        }
-        
-        return now
-    }
 }
-

@@ -43,10 +43,6 @@ class SoundManager: ObservableObject {
         didSet { saveSettings() }
     }
     
-    @Published var sessionCompleteSound: SoundType {
-        didSet { saveSettings() }
-    }
-    
     @Published var volume: Float {
         didSet { saveSettings() }
     }
@@ -75,13 +71,6 @@ class SoundManager: ObservableObject {
         } else {
             self.breakCompleteSound = .breakTime
         }
-        
-        if let sessionSoundRaw = defaults.string(forKey: "sessionCompleteSound"),
-           let sessionSound = SoundType(rawValue: sessionSoundRaw) {
-            self.sessionCompleteSound = sessionSound
-        } else {
-            self.sessionCompleteSound = .celebration
-        }
     }
     
     // MARK: - Play Sounds
@@ -94,11 +83,6 @@ class SoundManager: ObservableObject {
     func playBreakCompleteSound() {
         guard isEnabled else { return }
         playSound(breakCompleteSound)
-    }
-    
-    func playSessionCompleteSound() {
-        guard isEnabled else { return }
-        playSound(sessionCompleteSound)
     }
     
     private func playSound(_ soundType: SoundType) {
@@ -125,7 +109,6 @@ class SoundManager: ObservableObject {
         defaults.set(volume, forKey: "soundVolume")
         defaults.set(workCompleteSound.rawValue, forKey: "workCompleteSound")
         defaults.set(breakCompleteSound.rawValue, forKey: "breakCompleteSound")
-        defaults.set(sessionCompleteSound.rawValue, forKey: "sessionCompleteSound")
     }
 }
 

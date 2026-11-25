@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 import Combine
-import Combine
+import UserNotifications
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
@@ -10,13 +10,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var showingOnboarding = false
     let settings = Settings()
     let timerManager: TimerManager
-    let statisticsManager = StatisticsManager()
     let soundManager = SoundManager()
-    let taskManager = TaskManager()
     let calendarManager = CalendarManager()
-    let presetManager = PresetManager()
-    let sessionJournal = SessionJournal()
-    let breakActivityManager = BreakActivityManager()
     let focusMonitor = FocusMonitor()
     var eventMonitor: Any?
     private var eventMonitorGlobal: Any?
@@ -25,13 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     override init() {
         self.timerManager = TimerManager(settings: settings)
         super.init()
-        
-        // Connect managers
-        self.timerManager.statisticsManager = statisticsManager
         self.timerManager.soundManager = soundManager
-        self.timerManager.sessionJournal = sessionJournal
-        self.timerManager.breakActivityManager = breakActivityManager
-        self.timerManager.presetManager = presetManager
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -184,13 +173,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = MenuBarView()
             .environmentObject(settings)
             .environmentObject(timerManager)
-            .environmentObject(statisticsManager)
             .environmentObject(soundManager)
-            .environmentObject(taskManager)
             .environmentObject(calendarManager)
-            .environmentObject(presetManager)
-            .environmentObject(sessionJournal)
-            .environmentObject(breakActivityManager)
             .frame(minWidth: 400, maxWidth: 600)
         
         let hostingController = NSHostingController(rootView: contentView)
@@ -209,13 +193,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         timerManager.$isRunning
             .removeDuplicates()
+            .filter { $0 }
+            .first()
+            .sink { _ in
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+            }
+            .store(in: &cancellables)
+
+        timerManager.$isRunning
+            .combineLatest(timerManager.$isBreakTime)
+            .map { running, onBreak in running && !onBreak }
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] running in
-                guard let self = self else { return }
-                if running && !self.timerManager.isBreakTime {
-                    self.focusMonitor.start()
+            .sink { [weak self] focusing in
+                if focusing {
+                    self?.focusMonitor.start()
                 } else {
-                    self.focusMonitor.stop()
+                    self?.focusMonitor.stop()
                 }
             }
             .store(in: &cancellables)
@@ -364,10 +358,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     return self.showingOnboarding 
                 },
                 set: { newValue in
-                    print("📝 Binding SET: newValue = \(newValue)")
-                    self.showingOnboarding = newValue
                     if !newValue {
-                        print("📝 Binding: Calling dismissOnboarding()")
                         self.dismissOnboarding()
                     }
                 }

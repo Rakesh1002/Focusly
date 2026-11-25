@@ -58,11 +58,9 @@ struct OnboardingView: View {
                         FeaturePage(
                             icon: "calendar.badge.clock",
                             title: "Calendar Integration",
-                            description: "Smart scheduling around your meetings",
+                            description: "See how much time you have before your next meeting",
                             features: [
-                                "See upcoming meetings",
-                                "Auto-pause for meetings",
-                                "Find optimal focus time slots"
+                                "See upcoming meetings"
                             ],
                             action: {
                                 if !calendarManager.hasAccess {

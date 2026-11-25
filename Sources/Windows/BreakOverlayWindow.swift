@@ -44,8 +44,7 @@ struct BreakOverlayView: View {
                 .frame(height: 40)
             
             Button("Skip Break") {
-                timerManager.stop()
-                dismiss()
+                timerManager.skipBreakStartWork()
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
