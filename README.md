@@ -49,7 +49,7 @@ Agents talk to Focusly through its URL scheme:
 open -g "focusly://agent?state=working&name=Claude&project=api&app=com.apple.Terminal"
 ```
 
-`state` is `working`, `waiting` or `done`. `app` is the bundle ID of the app to return to, which the hooks below fill in from `__CFBundleIdentifier`. Open Settings → Coding agent hand-off to connect an agent or send a test event.
+`state` is `working`, `waiting` or `done`. `app` is the bundle ID of the app to return to, which the hooks below fill in from `__CFBundleIdentifier`. Open **Settings → Coding agent hand-off** to see which tools have their Focusly hooks installed. If a row shows **Access needed to check**, choose **Check…** and select that tool’s config folder. Focusly remembers the folder and checks again when you open the screen or press **Refresh**. The last signal on each row records when Focusly heard from that agent. **Test Focusly link** checks the app’s URL handler.
 
 **Claude Code**, in `~/.claude/settings.json`:
 

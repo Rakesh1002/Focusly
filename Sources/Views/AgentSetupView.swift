@@ -1,147 +1,160 @@
 import SwiftUI
 
-/// Tray screen that connects Claude Code, Codex or Cursor to the floating timer.
 struct AgentSetupView: View {
     @EnvironmentObject var agentWatch: AgentWatch
-    @State private var copied: String?
-
-    private struct Integration: Identifiable {
-        let id: String
-        let destination: String
-        let snippet: String?
-    }
-
-    private let integrations = [
-        Integration(id: "Claude Code", destination: "~/.claude/settings.json", snippet: AgentHooks.claudeCode),
-        Integration(id: "Codex", destination: "Choose your Codex config folder", snippet: nil),
-        Integration(id: "Cursor", destination: "~/.cursor/hooks.json", snippet: AgentHooks.cursor),
-    ]
+    @State private var installations: [CodingAgent: HookInstallation] = [:]
+    @State private var copied: CodingAgent?
+    @State private var testSentAt: Date?
+    private let files = AgentSetupFiles()
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
-            Text("Your agent tells the floating timer when it is working, and calls you back when it finishes or needs you. Install the Codex hooks or copy the settings for your tool.")
-                .font(.system(size: 12))
-                .foregroundStyle(Ink.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
             VStack(spacing: 0) {
-                ForEach(Array(integrations.enumerated()), id: \.element.id) { index, integration in
-                    if index > 0 { Divider().padding(.leading, 12) }
-                    row(integration)
+                ForEach(CodingAgent.allCases) { agent in
+                    if agent != .claude { Divider().padding(.leading, 12) }
+                    row(agent, status: installations[agent] ?? .needsAccess)
                 }
             }
             .background(Ink.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            HStack(spacing: Spacing.s) {
-                Circle()
-                    .fill(agentWatch.state == nil ? Ink.secondary : Ink.primary)
-                    .frame(width: 6, height: 6)
-                    .accessibilityHidden(true)
-                Text(status)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Ink.secondary)
+            HStack {
+                Button(action: refresh) { Label("Refresh", systemImage: "arrow.clockwise") }
                 Spacer()
-                Button("Send a test") {
+                Button {
+                    testSentAt = Date()
                     NSWorkspace.shared.open(URL(string: "focusly://agent?state=done&name=Test")!)
+                } label: {
+                    if let testSentAt, let received = agentWatch.lastLinkTest, received >= testSentAt {
+                        Label("Link works", systemImage: "checkmark")
+                    } else { Text("Test Focusly link") }
                 }
-                .buttonStyle(PanelButtonStyle(height: 28))
-                .frame(width: 100)
+                .help("Send a test to Focusly’s URL handler")
             }
+            .buttonStyle(.borderless)
+            .font(.system(size: 12))
         }
         .padding(14)
+        .onAppear(perform: refresh)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
     }
 
-    private func row(_ integration: Integration) -> some View {
-        HStack(spacing: Spacing.m) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(integration.id)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Ink.primary)
-                Text(integration.destination)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Ink.secondary)
-                    .lineLimit(2)
-            }
-            Spacer()
-            if let snippet = integration.snippet {
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(snippet, forType: .string)
-                    copied = integration.id
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        if copied == integration.id { copied = nil }
+    private func row(_ agent: CodingAgent, status: HookInstallation) -> some View {
+        let last = agentWatch.lastSignals[agent.rawValue]
+        let signalOnly = last != nil && (status == .needsAccess || status == .unreadable)
+        return HStack(alignment: .center, spacing: Spacing.s) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(agent.rawValue).font(.system(size: 14, weight: .semibold))
+                Label(signalOnly ? "Signal received" : status.title, systemImage: signalOnly ? "waveform" : symbol(for: status))
+                    .font(.system(size: 12, weight: .medium))
+                if let last {
+                    if agentWatch.name == agent.eventName && agentWatch.state == .working {
+                        Text("Working now").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Last signal \(last, style: .relative) ago")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .help(last.formatted())
                     }
-                } label: {
-                    Label(copied == integration.id ? "Copied" : "Copy",
-                          systemImage: copied == integration.id ? "checkmark" : "doc.on.doc")
+                } else if status == .installed {
+                    Text(agent == .codex ? "Awaiting signal. Trust in /hooks and send a prompt." : "Awaiting first signal")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .buttonStyle(PanelButtonStyle(height: 28))
-                .frame(width: 92)
-                .accessibilityLabel(copied == integration.id ? "Copied" : "Copy \(integration.id) hook")
-            } else {
-                Button("Install…", action: installCodexHooks)
-                    .buttonStyle(PanelButtonStyle(height: 28))
-                    .frame(width: 92)
-                    .accessibilityLabel("Install Codex hooks")
+                if status != .installed {
+                    Text(files.hasSelectedFolder(for: agent) ? agent.fileName : "~/" + agent.folderName + "/" + agent.fileName)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .help("Expected config in the agent’s folder")
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            switch status {
+            case .needsAccess, .unreadable:
+                Button("Check…") { chooseFolder(for: agent) }
+                    .buttonStyle(PanelButtonStyle(height: 28)).frame(width: 84)
+            case .missing, .partial, .legacyNotify:
+                if agent == .codex {
+                    Button(status == .legacyNotify || status == .missing ? "Install…" : "Repair…") { installCodex() }
+                        .buttonStyle(PanelButtonStyle(height: 28)).frame(width: 84)
+                } else {
+                    Button(copied == agent ? "Copied" : "Copy hooks") { copyHooks(for: agent) }
+                        .buttonStyle(PanelButtonStyle(height: 28)).frame(width: 84)
+                }
+            default:
+                Menu("Manage") { actions(for: agent) }
+                    .fixedSize()
+                    .accessibilityLabel("Manage \(agent.rawValue) hooks")
             }
         }
         .padding(12)
+        .contextMenu { actions(for: agent) }
     }
 
-    private func installCodexHooks() {
+    @ViewBuilder private func actions(for agent: CodingAgent) -> some View {
+        Button("Choose config folder…") { chooseFolder(for: agent) }
+        if agent == .codex {
+            Button("Install or repair hooks…") { installCodex() }
+        } else {
+            Button("Copy hook settings") { copyHooks(for: agent) }
+        }
+    }
+
+    private func symbol(for status: HookInstallation) -> String {
+        switch status {
+        case .installed: return "checkmark.circle.fill"
+        case .missing: return "minus.circle"
+        case .partial, .disabled, .invalid, .legacyNotify: return "exclamationmark.circle"
+        case .unreadable, .needsAccess: return "questionmark.circle"
+        }
+    }
+
+    private func refresh() {
+        installations = Dictionary(uniqueKeysWithValues: CodingAgent.allCases.map { ($0, files.status(for: $0)) })
+    }
+
+    private func copyHooks(for agent: CodingAgent) {
+        guard let snippet = agent.snippet else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(snippet, forType: .string)
+        copied = agent
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { if copied == agent { copied = nil } }
+    }
+
+    private func installCodex() {
+        guard files.hasSelectedFolder(for: .codex) else {
+            chooseFolder(for: .codex, install: true)
+            return
+        }
+        do { try files.withFolder(for: .codex) { try installCodex(in: $0) } }
+        catch { NSAlert(error: error).runModal() }
+        refresh()
+    }
+
+    private func installCodex(in folder: URL) throws {
+        try CodexHooks.install(in: folder)
+        let alert = NSAlert()
+        alert.messageText = "Codex hooks installed"
+        alert.informativeText = "Trust the Updating Focusly commands in /hooks, then send a prompt. Your last signal will appear here. If you previously added Focusly’s notify line to config.toml, remove that line to avoid duplicate alerts."
+        alert.runModal()
+    }
+
+    private func chooseFolder(for agent: CodingAgent, install: Bool = false) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.showsHiddenFiles = true
-        panel.prompt = "Install hooks"
-        panel.message = "Choose your Codex config folder. Focusly will add its entries to hooks.json."
-        if let home = NSHomeDirectoryForUser(NSUserName()) {
-            panel.directoryURL = URL(fileURLWithPath: home).appendingPathComponent(".codex")
-        }
+        panel.prompt = install ? "Install hooks" : "Check folder"
+        panel.message = install ? "Choose your Codex folder to add Focusly to hooks.json."
+                                : "Choose your \(agent.rawValue) config folder so Focusly can check \(agent.fileName)."
+        panel.directoryURL = (try? files.withFolder(for: agent) { $0 }) ?? agent.defaultFolder
         guard panel.runModal() == .OK, let folder = panel.url else { return }
         let scoped = folder.startAccessingSecurityScopedResource()
         defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
-        let alert = NSAlert()
         do {
-            try CodexHooks.install(in: folder)
-            alert.messageText = "Focusly hooks installed"
-            alert.informativeText = "Open /hooks in Codex and trust the three Updating Focusly commands. If you added Focusly’s old notify line to config.toml, remove that line to avoid duplicate alerts."
+            try files.remember(folder, for: agent)
+            if install { try installCodex(in: folder) }
         } catch {
-            alert.messageText = "Couldn’t install the Codex hooks"
-            alert.informativeText = error.localizedDescription
+            NSAlert(error: error).runModal()
         }
-        alert.runModal()
+        refresh()
     }
 
-    private var status: String {
-        switch agentWatch.state {
-        case .working: return "\(agentWatch.name) is working"
-        case .done: return "\(agentWatch.name) finished"
-        case .waiting: return "\(agentWatch.name) needs you"
-        case nil: return "Idle"
-        }
-    }
-}
-
-// shortcut: project names with spaces break the URL; percent-encode if users report it.
-enum AgentHooks {
-    static let claudeCode = #"""
-    {
-      "hooks": {
-        "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=working&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
-        "Stop": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=done&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }],
-        "Notification": [{ "hooks": [{ "type": "command", "command": "open -g \"focusly://agent?state=waiting&name=Claude&project=${CLAUDE_PROJECT_DIR##*/}&app=${__CFBundleIdentifier}\"" }] }]
-      }
-    }
-    """#
-
-    static let cursor = #"""
-    {
-      "version": 1,
-      "hooks": {
-        "beforeSubmitPrompt": [{ "command": "open -g \"focusly://agent?state=working&name=Cursor&app=${__CFBundleIdentifier}\"" }],
-        "stop": [{ "command": "open -g \"focusly://agent?state=done&name=Cursor&app=${__CFBundleIdentifier}\"" }]
-      }
-    }
-    """#
 }
