@@ -21,7 +21,7 @@ struct MenuBarView: View {
                 AgentSetupView()
             }
         }
-        .frame(width: 340)
+        .frame(width: TimerPanelLayout.width)
         .onDisappear { path.removeAll() }
     }
 

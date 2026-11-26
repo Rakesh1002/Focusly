@@ -1,6 +1,10 @@
 import SwiftUI
 import AppKit
 
+enum TimerPanelLayout {
+    static let width: CGFloat = 340
+}
+
 enum Spacing {
     static let xs: CGFloat = 4
     static let s: CGFloat = 8

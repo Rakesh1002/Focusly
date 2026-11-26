@@ -71,7 +71,7 @@ final class AgentWatch: ObservableObject {
     func apply(_ event: Event, frontmost: NSRunningApplication?) {
         name = event.name
         project = event.project
-        // Hooks pass the bundle ID of the app they run in; Codex only sends `done`, so this is its only way back.
+        // A hook can identify the originating app even when another app is frontmost.
         let hookApp = event.app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
         if let hookApp {
             origin = hookApp

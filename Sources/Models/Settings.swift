@@ -46,9 +46,15 @@ class Settings: ObservableObject {
         didSet { saveSettings() }
     }
     
-    private let defaults = UserDefaults.app
+    @Published var miniFloatingTimer: Bool {
+        didSet { defaults.set(miniFloatingTimer, forKey: "miniFloatingTimer") }
+    }
+
+    private let defaults: UserDefaults
     
-    init() {
+    init(defaults: UserDefaults = .app) {
+        self.defaults = defaults
+        self.miniFloatingTimer = defaults.bool(forKey: "miniFloatingTimer")
         // Default to 50 minutes work duration
         self.workDuration = defaults.double(forKey: "workDuration").nonZero ?? 50 * 60
         self.breakDuration = defaults.double(forKey: "breakDuration").nonZero ?? 10 * 60

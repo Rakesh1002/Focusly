@@ -8,18 +8,18 @@ struct AgentSetupView: View {
     private struct Integration: Identifiable {
         let id: String
         let destination: String
-        let snippet: String
+        let snippet: String?
     }
 
     private let integrations = [
         Integration(id: "Claude Code", destination: "~/.claude/settings.json", snippet: AgentHooks.claudeCode),
-        Integration(id: "Codex", destination: "Top of ~/.codex/config.toml, above any [section]", snippet: AgentHooks.codex),
+        Integration(id: "Codex", destination: "Choose your Codex config folder", snippet: nil),
         Integration(id: "Cursor", destination: "~/.cursor/hooks.json", snippet: AgentHooks.cursor),
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
-            Text("Your agent tells the floating timer when it is working, and calls you back when it finishes or needs you. Copy the hook for your tool and paste it where shown.")
+            Text("Your agent tells the floating timer when it is working, and calls you back when it finishes or needs you. Install the Codex hooks or copy the settings for your tool.")
                 .font(.system(size: 12))
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -63,22 +63,54 @@ struct AgentSetupView: View {
                     .lineLimit(2)
             }
             Spacer()
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(integration.snippet, forType: .string)
-                copied = integration.id
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    if copied == integration.id { copied = nil }
+            if let snippet = integration.snippet {
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(snippet, forType: .string)
+                    copied = integration.id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        if copied == integration.id { copied = nil }
+                    }
+                } label: {
+                    Label(copied == integration.id ? "Copied" : "Copy",
+                          systemImage: copied == integration.id ? "checkmark" : "doc.on.doc")
                 }
-            } label: {
-                Label(copied == integration.id ? "Copied" : "Copy",
-                      systemImage: copied == integration.id ? "checkmark" : "doc.on.doc")
+                .buttonStyle(PanelButtonStyle(height: 28))
+                .frame(width: 92)
+                .accessibilityLabel(copied == integration.id ? "Copied" : "Copy \(integration.id) hook")
+            } else {
+                Button("Install…", action: installCodexHooks)
+                    .buttonStyle(PanelButtonStyle(height: 28))
+                    .frame(width: 92)
+                    .accessibilityLabel("Install Codex hooks")
             }
-            .buttonStyle(PanelButtonStyle(height: 28))
-            .frame(width: 92)
-            .accessibilityLabel(copied == integration.id ? "Copied" : "Copy \(integration.id) hook")
         }
         .padding(12)
+    }
+
+    private func installCodexHooks() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.showsHiddenFiles = true
+        panel.prompt = "Install hooks"
+        panel.message = "Choose your Codex config folder. Focusly will add its entries to hooks.json."
+        if let home = NSHomeDirectoryForUser(NSUserName()) {
+            panel.directoryURL = URL(fileURLWithPath: home).appendingPathComponent(".codex")
+        }
+        guard panel.runModal() == .OK, let folder = panel.url else { return }
+        let scoped = folder.startAccessingSecurityScopedResource()
+        defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
+        let alert = NSAlert()
+        do {
+            try CodexHooks.install(in: folder)
+            alert.messageText = "Focusly hooks installed"
+            alert.informativeText = "Open /hooks in Codex and trust the three Updating Focusly commands. If you added Focusly’s old notify line to config.toml, remove that line to avoid duplicate alerts."
+        } catch {
+            alert.messageText = "Couldn’t install the Codex hooks"
+            alert.informativeText = error.localizedDescription
+        }
+        alert.runModal()
     }
 
     private var status: String {
@@ -86,12 +118,11 @@ struct AgentSetupView: View {
         case .working: return "\(agentWatch.name) is working"
         case .done: return "\(agentWatch.name) finished"
         case .waiting: return "\(agentWatch.name) needs you"
-        case nil: return "No agent activity yet"
+        case nil: return "Idle"
         }
     }
 }
 
-// The app is sandboxed and can't edit agent config files, so the user pastes these.
 // shortcut: project names with spaces break the URL; percent-encode if users report it.
 enum AgentHooks {
     static let claudeCode = #"""
@@ -103,8 +134,6 @@ enum AgentHooks {
       }
     }
     """#
-
-    static let codex = #"notify = ["bash", "-lc", "open -g \"focusly://agent?state=done&name=Codex&project=${PWD##*/}&app=${__CFBundleIdentifier}\""]"#
 
     static let cursor = #"""
     {
