@@ -275,17 +275,23 @@ struct NowView: View {
 
 struct TaskField: View {
     @EnvironmentObject var timerManager: TimerManager
+    @FocusState private var isFocused: Bool
     let onSubmit: () -> Void
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        let question: LocalizedStringKey = "What are you working on?"
+        let secondaryText = Color(nsColor: .secondaryLabelColor)
+        let textColor = Color(nsColor: .textColor)
         HStack(spacing: Spacing.s) {
             Image(systemName: "scope")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Ink.secondary)
-            TextField("What are you working on?", text: $timerManager.task)
+                .foregroundStyle(secondaryText)
+            TextField(question, text: $timerManager.task, prompt: Text(question).foregroundColor(textColor.opacity(0.72)))
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
-                .foregroundStyle(Ink.primary)
+                .foregroundStyle(textColor)
+                .focused($isFocused)
                 .onSubmit(onSubmit)
             if !timerManager.recentTasks.isEmpty {
                 Menu {
@@ -304,7 +310,12 @@ struct TaskField: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
-        .background(Ink.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Color(nsColor: .textBackgroundColor), in: shape)
+        .overlay {
+            shape.strokeBorder(isFocused ? Color.accentColor : secondaryText.opacity(0.65),
+                               lineWidth: isFocused ? 2 : 1)
+                .allowsHitTesting(false)
+        }
     }
 }
 
