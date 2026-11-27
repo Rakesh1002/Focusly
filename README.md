@@ -31,7 +31,7 @@ Focusly needs macOS 13 or later on a Mac with Apple silicon.
 
 ## What it does
 
-- **Floating timer.** Your task, the countdown and the time of day in one small glass pill above your other windows. Drag it anywhere; every display remembers where you put it. Hide it with ⌥⌘B without quitting.
+- **Floating timer.** Your task, the countdown and the time of day in one small glass pill above your other windows. Use the arrows on the timer to switch between the full panel and a single-line mini timer. Drag it anywhere. Each display remembers its position. Hide it with ⌥⌘B without quitting.
 - **Your next meeting.** With read-only calendar access, Focusly shows how long you have until your next meeting and warns you before a block runs into one.
 - **Breaks that happen.** A calm full-screen break on every display when a block ends. The next block waits until you start it.
 - **Pick up where you left off.** Leave yourself one line after each block. Focusly shows it when you come back.
@@ -49,7 +49,7 @@ Agents talk to Focusly through its URL scheme:
 open -g "focusly://agent?state=working&name=Claude&project=api&app=com.apple.Terminal"
 ```
 
-`state` is `working`, `waiting` or `done`. `app` is the bundle ID of the app to return to, which the hooks below fill in from `__CFBundleIdentifier`. The same snippets are in the app under Settings, then Coding agent hand-off, with a Copy button and Send a test.
+`state` is `working`, `waiting` or `done`. `app` is the bundle ID of the app to return to, which the hooks below fill in from `__CFBundleIdentifier`. Open **Settings → Coding agent hand-off** to see which tools have their Focusly hooks installed. If a row shows **Access needed to check**, choose **Check…** and select that tool’s config folder. Focusly remembers the folder and checks again when you open the screen or press **Refresh**. The last signal on each row records when Focusly heard from that agent. **Test Focusly link** checks the app’s URL handler.
 
 **Claude Code**, in `~/.claude/settings.json`:
 
@@ -63,11 +63,11 @@ open -g "focusly://agent?state=working&name=Claude&project=api&app=com.apple.Ter
 }
 ```
 
-**Codex**, at the top of `~/.codex/config.toml`, above any `[section]`:
+**Codex** — In Focusly, choose **Settings → Coding agent hand-off → Codex → Install…**. Select your Codex config folder (usually `~/.codex`, or your custom `CODEX_HOME`). Focusly merges its entries into `hooks.json`. You can run Install again after an update.
 
-```toml
-notify = ["bash", "-lc", "open -g \"focusly://agent?state=done&name=Codex&project=${PWD##*/}&app=${__CFBundleIdentifier}\""]
-```
+Open `/hooks` in Codex and trust the **Updating Focusly** commands. `UserPromptSubmit` starts the working indicator. `Stop` and `Interrupt` end it. If you are already in the originating app, the floating timer clears the agent row and the tray shows **Idle**. If you switched away, Focusly shows **Codex done** until you return.
+
+If you previously added Focusly’s `notify` line to `config.toml`, remove that line to avoid duplicate completion alerts. Keep any notification command used by another integration.
 
 **Cursor**, in `~/.cursor/hooks.json`:
 

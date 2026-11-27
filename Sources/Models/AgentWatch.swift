@@ -23,13 +23,19 @@ final class AgentWatch: ObservableObject {
     @Published private(set) var project = ""
     @Published private(set) var since: Date?
 
+    @Published private(set) var lastSignals: [String: Date]
+    @Published private(set) var lastLinkTest: Date?
+    private let defaults: UserDefaults
+
     var soundManager: SoundManager?
     weak var focusMonitor: FocusMonitor?
     private var origin: NSRunningApplication?
     private var activationObserver: NSObjectProtocol?
     private var workingExpiry: DispatchWorkItem?
 
-    init() {
+    init(defaults: UserDefaults = .app) {
+        self.defaults = defaults
+        lastSignals = defaults.dictionary(forKey: "agentLastSignals") as? [String: Date] ?? [:]
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
@@ -65,13 +71,21 @@ final class AgentWatch: ObservableObject {
 
     func handle(url: URL) {
         guard let event = Self.parse(url) else { return }
+        if event.name == "Test" {
+            lastLinkTest = Date()
+            return
+        }
+        if let agent = CodingAgent.allCases.first(where: { $0.eventName == event.name }) {
+            lastSignals[agent.rawValue] = Date()
+            defaults.set(lastSignals, forKey: "agentLastSignals")
+        }
         apply(event, frontmost: NSWorkspace.shared.frontmostApplication)
     }
 
     func apply(_ event: Event, frontmost: NSRunningApplication?) {
         name = event.name
         project = event.project
-        // Hooks pass the bundle ID of the app they run in; Codex only sends `done`, so this is its only way back.
+        // A hook can identify the originating app even when another app is frontmost.
         let hookApp = event.app.flatMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first }
         if let hookApp {
             origin = hookApp

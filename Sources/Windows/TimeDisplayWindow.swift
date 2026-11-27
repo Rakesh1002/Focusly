@@ -33,6 +33,7 @@ final class TimeOverlayWindow: NSPanel {
         if rect.size != frame.size && rect.minX == frame.minX {
             rect.origin.x = frame.maxX - rect.width
             rect.origin.y = frame.maxY - rect.height
+            if let screen { rect.origin = WindowManager.clamp(rect, into: screen.frame) }
         }
         super.setFrame(rect, display: flag)
     }
@@ -71,50 +72,26 @@ struct TimeDisplayWindow: View {
     @State private var hovering = false
 
     private static let driftGrace: TimeInterval = 120
-    private static let leadingSlot: CGFloat = 18
+    private static let controlSize: CGFloat = 28
+    private static let toggleSize: CGFloat = 24
 
     var body: some View {
         let drifting = isDrifting
         let shape = RoundedRectangle(cornerRadius: 16)
         TimelineView(.everyMinute) { context in
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                HStack(spacing: Spacing.s) {
-                    leadingSlot
-                    Text(drifting ? (task.isEmpty ? "Back to your focus block" : "Back to: \(task)") : headline)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(timerManager.isRunning ? .primary : .secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if timerManager.isRunning {
-                        Spacer(minLength: Spacing.s)
-                        Text(timerManager.remainingTime.clock)
-                            .font(.callout.weight(.medium).monospacedDigit())
-                    }
-                }
-                HStack(spacing: Spacing.s) {
-                    if let runway = runway(at: Date()) {
-                        Text(runway.text)
-                            .foregroundStyle(runway.urgent ? Signal.soon : .secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: Spacing.s)
-                    Text(context.date.formatted(date: .omitted, time: .shortened))
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("Time \(context.date.formatted(date: .omitted, time: .shortened))")
-                }
-                .font(.caption)
-                .padding(.leading, Self.leadingSlot + Spacing.s)
-                if let agentState = agentWatch.state {
-                    agentRow(agentState)
-                        .font(.caption)
-                        .padding(.leading, Self.leadingSlot + Spacing.s)
+            HStack(alignment: .center, spacing: Spacing.s) {
+                leadingSlot
+                if settings.miniFloatingTimer {
+                    miniReadout(at: context.date)
+                } else {
+                    fullReadout(at: context.date, drifting: drifting)
                 }
             }
             .padding(.horizontal, Spacing.m)
-            .padding(.vertical, Spacing.s)
-            .frame(maxWidth: 300, alignment: .leading)
-            .fixedSize()
+            .padding(.trailing, Self.toggleSize + Spacing.xs)
+            .padding(.vertical, settings.miniFloatingTimer ? Spacing.xs : Spacing.m)
+            .frame(width: settings.miniFloatingTimer ? nil : TimerPanelLayout.width, alignment: .leading)
+            .fixedSize(horizontal: settings.miniFloatingTimer, vertical: true)
             .glassBackground(in: shape, interactive: true)
             .overlay(shape.strokeBorder(Ink.hairline, lineWidth: 0.5))
             .overlay {
@@ -124,7 +101,6 @@ struct TimeDisplayWindow: View {
             }
         }
         .contentShape(shape)
-        .onHover { hovering = $0 }
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in window?.dragChanged() }
@@ -132,7 +108,22 @@ struct TimeDisplayWindow: View {
                     if window?.dragEnded() == false { click() }
                 }
         )
+        .overlay(alignment: .trailing) {
+            Button { settings.miniFloatingTimer.toggle() } label: {
+                Image(systemName: settings.miniFloatingTimer ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: Self.toggleSize, height: Self.toggleSize)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(sizeToggleTitle)
+            .help(sizeToggleTitle)
+            .padding(.trailing, Spacing.s)
+        }
+        .onHover { hovering = $0 }
         .contextMenu {
+            Button(sizeToggleTitle) { settings.miniFloatingTimer.toggle() }
             Button("Hide floating timer") { settings.showTimeDisplay = false }
             Button("Reset position") {
                 if let window { WindowManager.shared.resetPosition(of: window) }
@@ -142,32 +133,88 @@ struct TimeDisplayWindow: View {
         .accessibilityAction(named: "Open Focusly", click)
     }
 
+    private var sizeToggleTitle: String {
+        settings.miniFloatingTimer ? "Use full timer" : "Use mini timer"
+    }
+
+    private func fullReadout(at date: Date, drifting: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            HStack(spacing: Spacing.s) {
+                Text(drifting ? (task.isEmpty ? "Back to your focus block" : "Back to: \(task)") : headline)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(timerManager.isRunning ? .primary : .secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if timerManager.isRunning {
+                    Spacer(minLength: Spacing.s)
+                    Text(timerManager.remainingTime.clock)
+                        .font(.callout.weight(.medium).monospacedDigit())
+                }
+            }
+            HStack(spacing: Spacing.s) {
+                if let runway = runway(at: date) {
+                    Text(runway.text)
+                        .foregroundStyle(runway.urgent ? Signal.soon : .secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: Spacing.s)
+                Text(date.formatted(date: .omitted, time: .shortened))
+                    .monospacedDigit()
+                    .fixedSize()
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Time \(date.formatted(date: .omitted, time: .shortened))")
+            }
+            .font(.caption)
+            if let agentState = agentWatch.state {
+                agentRow(agentState)
+                    .font(.caption)
+            }
+        }
+    }
+
+    private func miniReadout(at date: Date) -> some View {
+        HStack(spacing: Spacing.s) {
+            if timerManager.isBreakTime {
+                Image(systemName: "cup.and.saucer").accessibilityLabel("Break")
+            }
+            Text(timerManager.isRunning ? timerManager.remainingTime.clock : date.formatted(date: .omitted, time: .shortened))
+                .font(.callout.weight(.medium).monospacedDigit())
+            if let state = agentWatch.state {
+                Text(state == .working ? "Working" : state == .waiting ? "Needs you" : "Done")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(state == .working ? .secondary : .primary)
+                    .help(agentWatch.name)
+            }
+        }
+        .fixedSize()
+    }
+
     private var leadingSlot: some View {
         ZStack {
             Group {
                 if timerManager.isRunning {
-                    FocusRing(progress: blockProgress, lineWidth: 2.5)
+                    FocusRing(progress: blockProgress, lineWidth: 3)
                 } else {
-                    Circle().fill(Ink.secondary).frame(width: 8, height: 8)
+                    Circle().fill(Ink.secondary).frame(width: 10, height: 10)
                 }
             }
             .opacity(hovering ? 0 : 1)
             .accessibilityHidden(true)
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.secondary)
-                .frame(width: Self.leadingSlot, height: Self.leadingSlot)
+                .frame(width: Self.controlSize, height: Self.controlSize)
                 .contentShape(Circle())
                 // Outranks the anchor-wide drag gesture, which would otherwise treat this as a click on the anchor.
                 .highPriorityGesture(TapGesture().onEnded { settings.showTimeDisplay = false })
                 .allowsHitTesting(hovering)
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { settings.showTimeDisplay = false }
-            .opacity(hovering ? 1 : 0)
-            .help("Hide floating timer")
-            .accessibilityLabel("Hide floating timer")
+                .opacity(hovering ? 1 : 0)
+                .help("Hide floating timer")
+                .accessibilityLabel("Hide floating timer")
         }
-        .frame(width: Self.leadingSlot, height: Self.leadingSlot)
+        .frame(width: Self.controlSize, height: Self.controlSize)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: hovering)
     }
 
